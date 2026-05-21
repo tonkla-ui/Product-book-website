@@ -103,8 +103,7 @@
           <div class="field-group">
             <label for="productPrice">Price <span class="required">*</span></label>
             <div class="price-wrap">
-              <!-- เปลี่ยนสัญลักษณ์ตรงนี้จาก $ เป็น ฿ -->
-              <span class="currency-symbol">฿</span>
+              <span class="currency-symbol">$</span>
               <input
                 type="number"
                 id="productPrice"
@@ -173,6 +172,8 @@
     </div>
   </div>
 
+  <!-- Supabase SDK (CDN — ไม่ต้องติดตั้ง) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>
