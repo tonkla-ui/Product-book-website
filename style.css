@@ -679,6 +679,227 @@ p { color: var(--text-2); font-size: 0.95rem; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── DATA TRANSFER BAR ────────────────────────────────────── */
+.transfer-bar-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 4vw, 2.5rem) 1.5rem;
+  animation: fadeSlideUp 0.6s 0.08s ease both;
+}
+
+.transfer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 14px 20px;
+  background: var(--navy-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle shimmer line on top */
+.transfer-bar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(212,168,71,0.5) 30%,
+    rgba(212,168,71,0.8) 50%,
+    rgba(212,168,71,0.5) 70%,
+    transparent 100%
+  );
+}
+
+.transfer-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.transfer-label > i { font-size: 1rem; color: var(--gold); }
+
+.transfer-label > span:first-of-type {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: 0.02em;
+}
+
+.transfer-hint {
+  font-size: 0.72rem !important;
+  color: var(--text-3) !important;
+  font-weight: 400 !important;
+  display: none;
+}
+
+@media (min-width: 600px) { .transfer-hint { display: inline !important; } }
+
+.transfer-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.transfer-divider { width: 1px; height: 32px; background: var(--border); flex-shrink: 0; }
+
+/* Transfer buttons */
+.btn-transfer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: all var(--transition);
+  background: none;
+  text-align: left;
+}
+
+.btn-transfer-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  transition: transform var(--transition);
+}
+
+.btn-transfer:hover .btn-transfer-icon { transform: scale(1.12); }
+
+.btn-transfer-text { display: flex; flex-direction: column; gap: 1px; }
+
+.btn-transfer-label { font-size: 0.82rem; font-weight: 700; white-space: nowrap; }
+
+.btn-transfer-sub {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* Export — gold */
+.btn-export { border-color: var(--border-gold); color: var(--gold); background: var(--gold-muted); }
+.btn-export .btn-transfer-icon { background: rgba(212,168,71,0.15); color: var(--gold); }
+.btn-export:hover {
+  border-color: var(--gold);
+  background: rgba(212,168,71,0.2);
+  box-shadow: 0 0 0 3px rgba(212,168,71,0.1);
+}
+
+/* Import — blue */
+.btn-import {
+  border-color: rgba(59,130,246,0.35);
+  color: var(--blue-light);
+  background: rgba(59,130,246,0.08);
+}
+.btn-import .btn-transfer-icon { background: rgba(59,130,246,0.12); color: var(--blue-light); }
+.btn-import:hover {
+  border-color: var(--blue-light);
+  background: rgba(59,130,246,0.14);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+
+.btn-transfer.busy { opacity: 0.6; cursor: not-allowed; pointer-events: none; }
+
+@media (max-width: 480px) {
+  .transfer-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .btn-transfer-text { display: none; }
+  .btn-transfer { padding: 8px 12px; }
+  .transfer-actions { width: 100%; }
+}
+
+/* ── IMPORT MODAL ─────────────────────────────────────────── */
+.import-modal { max-width: 420px; }
+.import-modal-icon { color: var(--blue-light) !important; }
+
+.import-file-preview {
+  background: var(--navy-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin: 0.75rem 0 1rem;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.82rem;
+}
+
+.import-file-preview i { font-size: 1.6rem; color: var(--gold); flex-shrink: 0; }
+.import-file-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.import-file-name { font-weight: 700; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.import-file-info { color: var(--text-3); font-size: 0.75rem; }
+
+.import-mode-label {
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  color: var(--text-3) !important;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.6rem;
+}
+
+.import-mode-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.import-mode-option { cursor: pointer; }
+.import-mode-option input { display: none; }
+
+.import-mode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 14px 10px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--navy-3);
+  transition: border-color var(--transition), background var(--transition), box-shadow var(--transition);
+  text-align: center;
+}
+
+.import-mode-card i { font-size: 1.4rem; color: var(--text-3); transition: color var(--transition); }
+.import-mode-card strong { font-size: 0.82rem; color: var(--text-2); font-family: 'Plus Jakarta Sans', sans-serif; }
+.import-mode-card small { font-size: 0.68rem; color: var(--text-3); line-height: 1.4; }
+
+.import-mode-option input:checked + .import-mode-card {
+  border-color: var(--gold);
+  background: var(--gold-muted);
+  box-shadow: 0 0 0 3px rgba(212,168,71,0.1);
+}
+
+.import-mode-option input:checked + .import-mode-card i,
+.import-mode-option input:checked + .import-mode-card strong { color: var(--gold); }
+
+.btn-import-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 22px;
+  font-size: 0.88rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  color: var(--navy);
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(212,168,71,0.35);
+  transition: filter var(--transition), transform var(--transition);
+}
+
+.btn-import-confirm:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
 /* ── SCROLLBAR ────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--navy); }
