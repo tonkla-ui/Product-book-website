@@ -25,9 +25,11 @@ product-manager/
 
 ### Where data is stored
 
-- **Product data** (name, price, date): `localStorage` under the key `vault_products`
-- **Images**: Converted to base64 strings and stored inside the same `localStorage` entry
-- **Limit**: localStorage holds ~5–10 MB per website. If you have many large images, consider the Firebase upgrade below.
+- **Product data** (name, price, date) and **images** (base64): `localStorage` under the key `vault_products`
+- **Limit**: localStorage holds ~5–10 MB per website. With many large images this fills up fast — keep images under 1 MB each for best results, or use the Export/Import system to archive old data.
+
+> **Note:** `localStorage` is tied to a specific browser on a specific device.  
+> To move data to another device, use the **Export / Import** buttons described below.
 
 ---
 
@@ -47,7 +49,7 @@ No install, no build step needed.
 
 ### Adding a Product
 1. Fill in **Product Name** and **Price**
-2. (Optional) click the image box to upload a photo — or drag & drop
+2. (Optional) Click the image box to upload a photo — or drag & drop
 3. Click **Save Product** — nothing is saved until you press this button
 
 ### Editing a Product
@@ -68,6 +70,27 @@ No install, no build step needed.
   - `89` → shows products priced $89.xx
   - `key` → shows "Keyboard"
 - Case-insensitive (searching `COLA` finds `Cola`)
+
+---
+
+## 📤 Export & Import (Moving Data Across Devices)
+
+Because `localStorage` is per browser per device, Vault includes a built-in Export/Import system so you can back up and transfer all your data without any account or server.
+
+### Exporting
+1. Click **ดาวน์โหลดข้อมูลสินค้า** (Export)
+2. A file named `vault-backup-YYYY-MM-DD.vault` downloads to your device
+3. This file contains all products and images in JSON format
+
+### Importing
+1. Click **อัปโหลดข้อมูลสินค้า** (Import)
+2. Select a `.vault` file from your device
+3. Choose an import mode:
+   - **Merge** — adds new products from the file without touching existing ones (skips duplicate IDs)
+   - **Replace All** — wipes current data and replaces it entirely with the file's contents
+4. Click **นำเข้าข้อมูล** to confirm
+
+> The `.vault` file is just JSON — you can open it in any text editor.
 
 ---
 
@@ -111,7 +134,7 @@ After ~1 minute your site is live at:
 ```
 https://YOUR_USERNAME.github.io/my-vault/
 ```
-Share this URL — it works on any device.
+Share this URL — it works on any device, and each device keeps its own local vault.
 
 ### Updating the site later
 ```bash
@@ -130,14 +153,17 @@ GitHub Pages updates automatically within ~1 minute.
 This means:
 - Data saved on your laptop **won't appear** on your phone automatically
 - Opening the site in a different browser shows a fresh vault
+- Clearing browser data / site data **will erase your vault**
 
-**If you need data across devices**, see the Firebase upgrade below.
+**To move data between devices:** use the Export button on the source device, then the Import button on the destination device.
+
+**To prevent data loss:** export a backup regularly and keep the `.vault` file somewhere safe (cloud drive, email to yourself, etc.).
 
 ---
 
 ## 🔥 Optional: Upgrade to Firebase (Cross-Device Sync)
 
-This gives you real cloud storage so your products sync everywhere — still **100% free** on Firebase's Spark plan.
+If you want products to sync automatically across all devices without manual Export/Import, you can upgrade to Firebase — still **100% free** on Firebase's Spark plan.
 
 ### 1. Create a Firebase project
 1. Go to https://console.firebase.google.com
@@ -156,25 +182,20 @@ This gives you real cloud storage so your products sync everywhere — still **1
 - Copy the `firebaseConfig` object
 
 ### 5. Replace localStorage with Firebase in `app.js`
-Add this to the top of `app.js` (replacing the script tag in `index.html`):
+Add this to `index.html` before `app.js`:
 ```html
-<!-- In index.html, before app.js: -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-app.js";
   import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc }
     from "https://www.gstatic.com/firebasejs/10.x.x/firebase-firestore.js";
-  import { getStorage, ref, uploadBytes, getDownloadURL }
-    from "https://www.gstatic.com/firebasejs/10.x.x/firebase-storage.js";
 
   const firebaseConfig = { /* paste your config here */ };
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
-  const storage = getStorage(app);
   window._db = db;
-  window._storage = storage;
 </script>
 ```
-Then update `saveToStorage()` / `loadFromStorage()` in `app.js` to call Firestore instead of `localStorage`.
+Then replace `loadFromStorage()`, `insertProduct()`, `updateProduct()`, and `removeProduct()` in `app.js` with Firestore equivalents.
 
 ---
 
@@ -186,7 +207,7 @@ Then update `saveToStorage()` / `loadFromStorage()` in `app.js` to call Firestor
 | Font | `index.html` Google Fonts link + `style.css` `font-family` |
 | Currency symbol | `index.html` → `.currency-symbol` span & `app.js` `formatPrice()` |
 | Max image size | `app.js` → lines with `5 * 1024 * 1024` (currently 5 MB) |
-| Demo products | `app.js` → `seedDemoProducts()` function |
+| Storage key | `app.js` → `STORAGE_KEY` constant |
 | Page title | `index.html` → `<title>` tag and `.brand-name` span |
 
 ---
