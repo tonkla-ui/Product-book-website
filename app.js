@@ -2,80 +2,145 @@
  * ═══════════════════════════════════════════════════════════
  * VAULT — Product Manager  |  app.js
  *
- * Storage  : localStorage (browser-native, free, unlimited*)
- * Images   : stored as base64 data-URLs inside localStorage
- *            (* localStorage is ~5–10 MB per origin)
+ * Storage  : Supabase (PostgreSQL) — ซิงค์ทุกอุปกรณ์
+ * Images   : เก็บเป็น base64 ใน Supabase database
  *
- * Key features:
- *  - Add / Edit / Delete products
- *  - SAVE button must be pressed — nothing auto-saves
- *  - Instant search across name AND price
- *  - Data persists after page refresh
+ * ก่อนใช้งาน — สร้างตารางใน Supabase SQL Editor:
+ *
+ *   CREATE TABLE products (
+ *     id           TEXT PRIMARY KEY,
+ *     product_name TEXT NOT NULL,
+ *     product_price FLOAT8 NOT NULL,
+ *     product_image TEXT DEFAULT '',
+ *     created_at   TIMESTAMPTZ DEFAULT now()
+ *   );
+ *
+ *   ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ *   CREATE POLICY "public_all" ON products FOR ALL USING (true) WITH CHECK (true);
+ *
  * ═══════════════════════════════════════════════════════════
  */
 
 'use strict';
 
-/* ── STORAGE KEY ─────────────────────────────────────────── */
-const STORAGE_KEY = 'vault_products';
+/* ─────────────────────────────────────────────────────────── *
+ *  SUPABASE CONFIG
+ *  ⚠️  เปลี่ยน SUPABASE_URL ให้เป็น URL จริงจาก Dashboard
+ *      (Settings → API → Project URL)
+ * ─────────────────────────────────────────────────────────── */
+const SUPABASE_URL  = 'https://ufnoghkefhxeviivvugt.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_8DKiAQ0luVkZUQO4-KpZhA_4NgTB2sX';
+const TABLE         = 'products';
+
+/* สร้าง Supabase client (SDK โหลดผ่าน CDN ใน index.html) */
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ── IN-MEMORY STATE ──────────────────────────────────────── */
-let products   = [];   // full product array (loaded from storage)
-let deleteId   = null; // id pending deletion confirmation
+let products = [];   // ข้อมูลสินค้าทั้งหมด (โหลดจาก Supabase)
+let deleteId = null; // id ที่รอการยืนยันการลบ
 
 /* ── DOM REFS ─────────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
 
-const searchInput      = $('searchInput');
-const searchClear      = $('searchClear');
-const imageUploadArea  = $('imageUploadArea');
-const imageInput       = $('imageInput');
-const uploadPlaceholder= $('uploadPlaceholder');
-const imagePreview     = $('imagePreview');
-const removeImageBtn   = $('removeImage');
-const productNameInput = $('productName');
-const productPriceInput= $('productPrice');
-const editIdInput      = $('editId');
-const saveBtn          = $('saveBtn');
-const saveBtnText      = $('saveBtnText');
-const cancelEditBtn    = $('cancelEdit');
-const formTitle        = $('formTitle');
-const productGrid      = $('productGrid');
-const emptyState       = $('emptyState');
-const noResults        = $('noResults');
-const noResultsQuery   = $('noResultsQuery');
-const filterCount      = $('filterCount');
-const productCount     = $('productCount');
-const toast            = $('toast');
-const toastMessage     = $('toastMessage');
-const modalOverlay     = $('modalOverlay');
-const modalConfirm     = $('modalConfirm');
-const modalCancel      = $('modalCancel');
+const searchInput       = $('searchInput');
+const searchClear       = $('searchClear');
+const imageUploadArea   = $('imageUploadArea');
+const imageInput        = $('imageInput');
+const uploadPlaceholder = $('uploadPlaceholder');
+const imagePreview      = $('imagePreview');
+const removeImageBtn    = $('removeImage');
+const productNameInput  = $('productName');
+const productPriceInput = $('productPrice');
+const editIdInput       = $('editId');
+const saveBtn           = $('saveBtn');
+const saveBtnText       = $('saveBtnText');
+const cancelEditBtn     = $('cancelEdit');
+const formTitle         = $('formTitle');
+const productGrid       = $('productGrid');
+const emptyState        = $('emptyState');
+const noResults         = $('noResults');
+const noResultsQuery    = $('noResultsQuery');
+const filterCount       = $('filterCount');
+const productCount      = $('productCount');
+const toast             = $('toast');
+const toastMessage      = $('toastMessage');
+const modalOverlay      = $('modalOverlay');
+const modalConfirm      = $('modalConfirm');
+const modalCancel       = $('modalCancel');
 
 /* ─────────────────────────────────────────────────────────── *
- *  STORAGE HELPERS
+ *  SUPABASE HELPERS
+ *  แทนที่ localStorage ด้วย Supabase API calls
  * ─────────────────────────────────────────────────────────── */
 
-/** Load products from localStorage into `products` array */
-function loadFromStorage() {
+/**
+ * โหลดสินค้าทั้งหมดจาก Supabase
+ * เรียงจากใหม่สุดไปเก่าสุด
+ */
+async function loadFromStorage() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    products = raw ? JSON.parse(raw) : [];
+    const { data, error } = await db
+      .from(TABLE)
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // แปลง column_name จาก Supabase (snake_case) → app format
+    products = (data || []).map(row => ({
+      id:           row.id,
+      productName:  row.product_name,
+      productPrice: row.product_price,
+      productImage: row.product_image || '',
+      createdAt:    row.created_at,
+    }));
+
   } catch (e) {
-    console.warn('Vault: failed to load storage', e);
+    console.error('Vault: โหลดข้อมูลล้มเหลว', e);
+    showToast('เชื่อมต่อ Supabase ไม่ได้ — ตรวจสอบ URL และ Key', true);
     products = [];
   }
 }
 
-/** Save the current `products` array to localStorage */
-function saveToStorage() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-  } catch (e) {
-    // Storage quota likely exceeded (large images)
-    showToast('Storage full! Try removing some products or using smaller images.', true);
-    throw e; // re-throw so save flow knows it failed
-  }
+/**
+ * เพิ่มสินค้าใหม่ลงใน Supabase
+ * @param {Object} product — object ที่มี id, productName, productPrice, productImage, createdAt
+ */
+async function insertProduct(product) {
+  const { error } = await db.from(TABLE).insert({
+    id:            product.id,
+    product_name:  product.productName,
+    product_price: product.productPrice,
+    product_image: product.productImage || '',
+    created_at:    product.createdAt,
+  });
+  if (error) throw error;
+}
+
+/**
+ * อัปเดตสินค้าที่มีอยู่ใน Supabase
+ * @param {Object} product — object ที่มีข้อมูลครบ รวม id
+ */
+async function updateProduct(product) {
+  const { error } = await db
+    .from(TABLE)
+    .update({
+      product_name:  product.productName,
+      product_price: product.productPrice,
+      product_image: product.productImage || '',
+    })
+    .eq('id', product.id);
+  if (error) throw error;
+}
+
+/**
+ * ลบสินค้าออกจาก Supabase ตาม id
+ * @param {string} id
+ */
+async function removeProduct(id) {
+  const { error } = await db.from(TABLE).delete().eq('id', id);
+  if (error) throw error;
 }
 
 /* ─────────────────────────────────────────────────────────── *
@@ -89,14 +154,12 @@ function generateId() {
  *  SEARCH / FILTER
  * ─────────────────────────────────────────────────────────── */
 
-/** Returns products matching the query against name AND price */
+/** คืนค่าสินค้าที่ตรงกับ query ทั้งชื่อ AND ราคา */
 function filterProducts(query) {
   if (!query.trim()) return products;
-
   const q = query.trim().toLowerCase();
   return products.filter(p => {
     const nameMatch  = p.productName.toLowerCase().includes(q);
-    // Convert price to string for partial matching (e.g. '5' matches '$50')
     const priceMatch = String(p.productPrice).includes(q);
     return nameMatch || priceMatch;
   });
@@ -106,29 +169,26 @@ function filterProducts(query) {
  *  RENDERING
  * ─────────────────────────────────────────────────────────── */
 
-/** Format price nicely: "$1,234.56" */
 function formatPrice(price) {
   const num = parseFloat(price);
   if (isNaN(num)) return '$0.00';
   return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/** Format ISO date to readable: "May 20, 2026" */
 function formatDate(iso) {
   try {
     return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   } catch { return ''; }
 }
 
-/** Render filtered products into the grid */
 function renderProducts() {
   const query   = searchInput.value;
   const visible = filterProducts(query);
 
-  // Update counter in navbar
-  productCount.textContent = products.length === 1 ? '1 product' : `${products.length} products`;
+  productCount.textContent = products.length === 1
+    ? '1 product'
+    : `${products.length} products`;
 
-  // Show/hide empty state vs grid
   if (products.length === 0) {
     emptyState.style.display  = 'flex';
     noResults.style.display   = 'none';
@@ -139,7 +199,6 @@ function renderProducts() {
 
   emptyState.style.display = 'none';
 
-  // No results for this search
   if (visible.length === 0) {
     noResults.style.display   = 'flex';
     productGrid.style.display = 'none';
@@ -151,7 +210,6 @@ function renderProducts() {
   noResults.style.display   = 'none';
   productGrid.style.display = 'grid';
 
-  // Show filter badge when searching
   if (query.trim()) {
     filterCount.textContent = `${visible.length} of ${products.length}`;
     filterCount.classList.add('visible');
@@ -159,10 +217,7 @@ function renderProducts() {
     filterCount.classList.remove('visible');
   }
 
-  // Build card HTML — newest first
-  const sorted = [...visible].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  productGrid.innerHTML = sorted.map(p => `
+  productGrid.innerHTML = visible.map(p => `
     <div class="product-card" data-id="${p.id}">
       <div class="card-image-wrap">
         ${p.productImage
@@ -186,7 +241,6 @@ function renderProducts() {
   `).join('');
 }
 
-/** Prevent XSS in rendered HTML */
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -199,7 +253,6 @@ function escapeHtml(str) {
  *  IMAGE HANDLING
  * ─────────────────────────────────────────────────────────── */
 
-/** Convert a File object to a base64 data-URL string */
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -209,7 +262,6 @@ function fileToBase64(file) {
   });
 }
 
-/** Show chosen image in the upload area */
 function showImagePreview(src) {
   uploadPlaceholder.style.display = 'none';
   imagePreview.src                = src;
@@ -217,7 +269,6 @@ function showImagePreview(src) {
   removeImageBtn.style.display    = 'flex';
 }
 
-/** Reset the image upload area to its default empty state */
 function clearImagePreview() {
   imageInput.value                = '';
   imagePreview.src                = '';
@@ -230,32 +281,23 @@ function clearImagePreview() {
  *  FORM RESET
  * ─────────────────────────────────────────────────────────── */
 function resetForm() {
-  editIdInput.value        = '';
-  productNameInput.value   = '';
-  productPriceInput.value  = '';
+  editIdInput.value       = '';
+  productNameInput.value  = '';
+  productPriceInput.value = '';
   clearImagePreview();
-
-  // Restore "add" mode UI
-  formTitle.innerHTML      = '<i class="ph ph-plus-circle"></i> Add New Product';
-  saveBtnText.textContent  = 'Save Product';
+  formTitle.innerHTML         = '<i class="ph ph-plus-circle"></i> Add New Product';
+  saveBtnText.textContent     = 'Save Product';
   cancelEditBtn.style.display = 'none';
-
   productNameInput.focus();
 }
 
 /* ─────────────────────────────────────────────────────────── *
- *  SAVE (ADD / UPDATE)
+ *  SAVE (ADD / UPDATE) — บันทึกเมื่อกด Save เท่านั้น
  * ─────────────────────────────────────────────────────────── */
-
-/**
- * Called when the user clicks the SAVE button.
- * Nothing is stored until this runs.
- */
 async function handleSave() {
   const name  = productNameInput.value.trim();
   const price = productPriceInput.value.trim();
 
-  // ── Validation ───────────────────────────────────────────
   if (!name) {
     showToast('Please enter a product name.', true);
     productNameInput.focus();
@@ -267,9 +309,8 @@ async function handleSave() {
     return;
   }
 
-  // ── Collect image ─────────────────────────────────────────
-  let imageData = imagePreview.src || ''; // may already be base64 (edit mode)
-
+  // รวบรวมข้อมูลรูปภาพ
+  let imageData = imagePreview.src || '';
   if (imageInput.files && imageInput.files[0]) {
     const file = imageInput.files[0];
     if (file.size > 5 * 1024 * 1024) {
@@ -284,7 +325,7 @@ async function handleSave() {
     }
   }
 
-  // ── Save button loading state ─────────────────────────────
+  // แสดงสถานะ "กำลังบันทึก..."
   saveBtn.classList.add('saving');
   saveBtnText.textContent = 'Saving…';
   saveBtn.disabled = true;
@@ -293,23 +334,24 @@ async function handleSave() {
 
   try {
     if (editingId) {
-      // ── UPDATE existing product ───────────────────────────
-      const idx = products.findIndex(p => p.id === editingId);
-      if (idx === -1) throw new Error('Product not found');
-
-      products[idx] = {
-        ...products[idx],          // keep id & createdAt
+      /* ── UPDATE ── */
+      const updatedProduct = {
+        id:           editingId,
         productName:  name,
         productPrice: parseFloat(price),
         productImage: imageData,
       };
 
-      saveToStorage();
+      await updateProduct(updatedProduct);
+
+      // อัปเดตใน local array ด้วย
+      const idx = products.findIndex(p => p.id === editingId);
+      if (idx !== -1) products[idx] = { ...products[idx], ...updatedProduct };
+
       showToast('Product updated successfully!');
-      resetForm();
 
     } else {
-      // ── ADD new product ───────────────────────────────────
+      /* ── INSERT ── */
       const newProduct = {
         id:           generateId(),
         productName:  name,
@@ -318,21 +360,19 @@ async function handleSave() {
         createdAt:    new Date().toISOString(),
       };
 
-      products.push(newProduct);
-      saveToStorage();
+      await insertProduct(newProduct);
+      products.unshift(newProduct); // เพิ่มที่หัวลิสต์
+
       showToast('Product saved!');
-      resetForm();
     }
 
     renderProducts();
+    resetForm();
 
   } catch (e) {
-    // Storage error already toasted in saveToStorage()
-    if (!e.message?.includes('Storage full')) {
-      showToast('Something went wrong. Please try again.', true);
-    }
+    console.error('Save error:', e);
+    showToast('บันทึกล้มเหลว — ตรวจสอบการเชื่อมต่อ', true);
   } finally {
-    // Restore button after short delay
     setTimeout(() => {
       saveBtn.classList.remove('saving', 'success');
       saveBtnText.textContent = 'Save Product';
@@ -344,8 +384,6 @@ async function handleSave() {
 /* ─────────────────────────────────────────────────────────── *
  *  EDIT
  * ─────────────────────────────────────────────────────────── */
-
-/** Populate form with existing product data for editing */
 function startEdit(id) {
   const p = products.find(p => p.id === id);
   if (!p) return;
@@ -360,11 +398,10 @@ function startEdit(id) {
     clearImagePreview();
   }
 
-  formTitle.innerHTML     = '<i class="ph ph-pencil-simple"></i> Edit Product';
-  saveBtnText.textContent = 'Update Product';
+  formTitle.innerHTML         = '<i class="ph ph-pencil-simple"></i> Edit Product';
+  saveBtnText.textContent     = 'Update Product';
   cancelEditBtn.style.display = 'inline-flex';
 
-  // Scroll form into view
   $('formSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
   productNameInput.focus();
 }
@@ -372,72 +409,58 @@ function startEdit(id) {
 /* ─────────────────────────────────────────────────────────── *
  *  DELETE
  * ─────────────────────────────────────────────────────────── */
-
-/** Show confirmation modal before deleting */
 function confirmDelete(id) {
   deleteId = id;
   modalOverlay.classList.add('show');
 }
 
-/** Perform the actual deletion after confirmation */
-function deleteProduct() {
+async function deleteProduct() {
   if (!deleteId) return;
 
-  products = products.filter(p => p.id !== deleteId);
-  saveToStorage();
-  renderProducts();
-
-  // If we were editing the deleted product, reset form
-  if (editIdInput.value === deleteId) resetForm();
-
-  deleteId = null;
-  modalOverlay.classList.remove('show');
-  showToast('Product deleted.');
+  try {
+    await removeProduct(deleteId);
+    products = products.filter(p => p.id !== deleteId);
+    renderProducts();
+    if (editIdInput.value === deleteId) resetForm();
+    showToast('Product deleted.');
+  } catch (e) {
+    console.error('Delete error:', e);
+    showToast('ลบไม่สำเร็จ — ตรวจสอบการเชื่อมต่อ', true);
+  } finally {
+    deleteId = null;
+    modalOverlay.classList.remove('show');
+  }
 }
 
 /* ─────────────────────────────────────────────────────────── *
  *  TOAST NOTIFICATION
  * ─────────────────────────────────────────────────────────── */
-
 let toastTimer = null;
 
 function showToast(message, isError = false) {
   toastMessage.textContent = message;
-
-  // Toggle error styling
   toast.classList.toggle('error', isError);
   const icon = toast.querySelector('.toast-icon');
   icon.className = `ph ${isError ? 'ph-warning-circle' : 'ph-check-circle'} toast-icon`;
-
-  // Show
   toast.classList.add('show');
-
-  // Auto-hide after 3 s
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3500);
 }
 
 /* ─────────────────────────────────────────────────────────── *
  *  EVENT LISTENERS
  * ─────────────────────────────────────────────────────────── */
-
-// ── SAVE button ───────────────────────────────────────────────
 saveBtn.addEventListener('click', handleSave);
 
-// ── Allow Enter key in text fields to trigger save ────────────
 [productNameInput, productPriceInput].forEach(el => {
-  el.addEventListener('keydown', e => {
-    if (e.key === 'Enter') handleSave();
-  });
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') handleSave(); });
 });
 
-// ── Image upload: click anywhere in the upload area ───────────
 imageUploadArea.addEventListener('click', e => {
   if (e.target === removeImageBtn || removeImageBtn.contains(e.target)) return;
   imageInput.click();
 });
 
-// ── Image selected from file picker ───────────────────────────
 imageInput.addEventListener('change', async () => {
   const file = imageInput.files[0];
   if (!file) return;
@@ -449,12 +472,9 @@ imageInput.addEventListener('change', async () => {
   try {
     const base64 = await fileToBase64(file);
     showImagePreview(base64);
-  } catch {
-    showToast('Could not load image.', true);
-  }
+  } catch { showToast('Could not load image.', true); }
 });
 
-// ── Drag-and-drop image ───────────────────────────────────────
 imageUploadArea.addEventListener('dragover', e => {
   e.preventDefault();
   imageUploadArea.style.borderColor = 'var(--gold)';
@@ -469,35 +489,21 @@ imageUploadArea.addEventListener('drop', async e => {
   imageUploadArea.style.borderColor = '';
   const file = e.dataTransfer.files[0];
   if (!file || !file.type.startsWith('image/')) return;
-  if (file.size > 5 * 1024 * 1024) {
-    showToast('Image too large (max 5 MB).', true);
-    return;
-  }
+  if (file.size > 5 * 1024 * 1024) { showToast('Image too large (max 5 MB).', true); return; }
   try {
     const base64 = await fileToBase64(file);
     showImagePreview(base64);
-  } catch {
-    showToast('Could not load image.', true);
-  }
+  } catch { showToast('Could not load image.', true); }
 });
 
-// ── Remove image button ───────────────────────────────────────
-removeImageBtn.addEventListener('click', e => {
-  e.stopPropagation();
-  clearImagePreview();
-});
-
-// ── Cancel edit ───────────────────────────────────────────────
+removeImageBtn.addEventListener('click', e => { e.stopPropagation(); clearImagePreview(); });
 cancelEditBtn.addEventListener('click', resetForm);
 
-// ── Search (instant filter) ───────────────────────────────────
 searchInput.addEventListener('input', () => {
-  // Show/hide clear button
   searchClear.classList.toggle('visible', searchInput.value.length > 0);
   renderProducts();
 });
 
-// ── Clear search ──────────────────────────────────────────────
 searchClear.addEventListener('click', () => {
   searchInput.value = '';
   searchClear.classList.remove('visible');
@@ -505,23 +511,14 @@ searchClear.addEventListener('click', () => {
   renderProducts();
 });
 
-// ── Delete modal controls ─────────────────────────────────────
 modalConfirm.addEventListener('click', deleteProduct);
-
 modalCancel.addEventListener('click', () => {
   deleteId = null;
   modalOverlay.classList.remove('show');
 });
-
-// Close modal on overlay click
 modalOverlay.addEventListener('click', e => {
-  if (e.target === modalOverlay) {
-    deleteId = null;
-    modalOverlay.classList.remove('show');
-  }
+  if (e.target === modalOverlay) { deleteId = null; modalOverlay.classList.remove('show'); }
 });
-
-// Close modal with Escape key
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && modalOverlay.classList.contains('show')) {
     deleteId = null;
@@ -530,54 +527,13 @@ document.addEventListener('keydown', e => {
 });
 
 /* ─────────────────────────────────────────────────────────── *
- *  DEMO DATA (pre-loaded on first visit only)
+ *  INIT — โหลดข้อมูลจาก Supabase ตอนเปิดหน้าเว็บ
  * ─────────────────────────────────────────────────────────── */
+(async function init() {
+  // แสดง loading state ในปุ่ม Save ชั่วคราว
+  productCount.textContent = 'Loading…';
 
-/**
- * Adds example products so you can see how the app looks right away.
- * These are loaded ONLY if localStorage is empty.
- * Delete them from the UI just like any other product.
- */
-function seedDemoProducts() {
-  const demo = [
-    {
-      id:           'demo-1',
-      productName:  'Wireless Headphones',
-      productPrice: 89.99,
-      productImage: '', // no image — shows placeholder
-      createdAt:    new Date(Date.now() - 3 * 86400000).toISOString(),
-    },
-    {
-      id:           'demo-2',
-      productName:  'Mechanical Keyboard',
-      productPrice: 149.00,
-      productImage: '',
-      createdAt:    new Date(Date.now() - 2 * 86400000).toISOString(),
-    },
-    {
-      id:           'demo-3',
-      productName:  'USB-C Hub',
-      productPrice: 45.50,
-      productImage: '',
-      createdAt:    new Date(Date.now() - 86400000).toISOString(),
-    },
-  ];
-
-  products = demo;
-  saveToStorage();
-}
-
-/* ─────────────────────────────────────────────────────────── *
- *  INIT
- * ─────────────────────────────────────────────────────────── */
-
-(function init() {
-  loadFromStorage();
-
-  // Seed demo products only on very first visit
-  if (products.length === 0) {
-    seedDemoProducts();
-  }
+  await loadFromStorage(); // ดึงข้อมูลจาก Supabase
 
   renderProducts();
 })();
