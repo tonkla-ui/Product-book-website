@@ -56,6 +56,49 @@
   </header>
 
   <!-- ═══════════════════════════════════════════
+       DATA TRANSFER BAR (Export / Import)
+  ═══════════════════════════════════════════ -->
+  <div class="transfer-bar-wrap">
+    <div class="transfer-bar">
+
+      <!-- Left label -->
+      <div class="transfer-label">
+        <i class="ph ph-arrows-left-right"></i>
+        <span>Transfer Data</span>
+        <span class="transfer-hint">ย้ายข้อมูลข้ามอุปกรณ์โดยไม่ต้องล็อกอิน</span>
+      </div>
+
+      <!-- Buttons -->
+      <div class="transfer-actions">
+
+        <!-- EXPORT button -->
+        <button class="btn-transfer btn-export" id="exportBtn" title="ดาวน์โหลดข้อมูลสินค้าทั้งหมดเป็นไฟล์ .vault">
+          <span class="btn-transfer-icon"><i class="ph ph-download-simple"></i></span>
+          <span class="btn-transfer-text">
+            <span class="btn-transfer-label">ดาวน์โหลดข้อมูลสินค้า</span>
+            <span class="btn-transfer-sub">Export · .vault file</span>
+          </span>
+        </button>
+
+        <div class="transfer-divider"></div>
+
+        <!-- IMPORT button (triggers hidden file input) -->
+        <button class="btn-transfer btn-import" id="importBtn" title="อัปโหลดไฟล์ .vault เพื่อนำข้อมูลกลับมา">
+          <span class="btn-transfer-icon"><i class="ph ph-upload-simple"></i></span>
+          <span class="btn-transfer-text">
+            <span class="btn-transfer-label">อัปโหลดข้อมูลสินค้า</span>
+            <span class="btn-transfer-sub">Import · .vault file</span>
+          </span>
+        </button>
+
+        <!-- Hidden file input for import -->
+        <input type="file" id="importFileInput" accept=".vault,.json" hidden />
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
        MAIN CONTENT
   ═══════════════════════════════════════════ -->
   <main class="main-content">
@@ -158,6 +201,44 @@
   </div>
 
   <!-- ═══════════════════════════════════════════
+       IMPORT CONFIRM MODAL
+  ═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="importModalOverlay">
+    <div class="modal import-modal">
+      <div class="modal-icon import-modal-icon"><i class="ph ph-upload-simple"></i></div>
+      <h3>นำเข้าข้อมูลสินค้า</h3>
+      <div class="import-file-preview" id="importFilePreview">
+        <!-- filled by JS -->
+      </div>
+      <p class="import-mode-label">เลือกวิธีนำเข้า:</p>
+      <div class="import-mode-selector">
+        <label class="import-mode-option" id="modeMergeLabel">
+          <input type="radio" name="importMode" value="merge" id="modeMerge" checked />
+          <span class="import-mode-card">
+            <i class="ph ph-git-merge"></i>
+            <strong>Merge</strong>
+            <small>รวมสินค้าใหม่เข้ากับข้อมูลที่มีอยู่</small>
+          </span>
+        </label>
+        <label class="import-mode-option" id="modeReplaceLabel">
+          <input type="radio" name="importMode" value="replace" id="modeReplace" />
+          <span class="import-mode-card">
+            <i class="ph ph-arrow-counter-clockwise"></i>
+            <strong>Replace All</strong>
+            <small>ลบข้อมูลเดิมทั้งหมด แล้วใช้ข้อมูลจากไฟล์</small>
+          </span>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="importModalCancel">ยกเลิก</button>
+        <button class="btn-import-confirm" id="importModalConfirm">
+          <i class="ph ph-check"></i> นำเข้าข้อมูล
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
        DELETE CONFIRM MODAL
   ═══════════════════════════════════════════ -->
   <div class="modal-overlay" id="modalOverlay">
@@ -172,8 +253,6 @@
     </div>
   </div>
 
-  <!-- Supabase SDK (CDN — ไม่ต้องติดตั้ง) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>
