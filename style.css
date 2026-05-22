@@ -36,6 +36,14 @@ body.theme-warm {
   --border: rgba(58,45,33,0.06); --border-gold: rgba(178, 96, 56, 0.3);
   --bg-gradient: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(178, 96, 56, 0.04) 0%, transparent 100%);
 }
+/* เพิ่ม Palette สีของ Green34 เข้าไป */
+body.theme-green34 {
+  --navy: #f2fbf5; --navy-2: #ffffff; --navy-3: #e6f5eb; --navy-4: #cce8d8;
+  --gold: #22c55e; --gold-light: #4ade80; --gold-muted: rgba(34, 197, 94, 0.12);
+  --text-1: #14532d; --text-2: #166534; --text-3: #86efac;
+  --border: rgba(20, 83, 45, 0.08); --border-gold: rgba(34, 197, 94, 0.3);
+  --bg-gradient: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34, 197, 94, 0.06) 0%, transparent 100%);
+}
 
 /* ── BASE & CORE DYNAMICS ─────────────────────────────────── */
 :root {
@@ -73,6 +81,7 @@ h2 i { color: var(--gold); font-size: 1.1rem; }
 .navbar { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(1rem, 4vw, 2.5rem); height: 65px; background: rgba(var(--navy), 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); transition: background var(--transition); }
 body.theme-frost .navbar { background: rgba(244, 246, 249, 0.8); }
 body.theme-warm .navbar { background: rgba(252, 250, 246, 0.8); }
+body.theme-green34 .navbar { background: rgba(242, 251, 245, 0.8); } /* อัปเดตสี Navbar ธีม Green */
 
 .nav-brand { display: flex; align-items: center; gap: 10px; }
 .brand-icon { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--gold), #a8722e); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #fff; }
