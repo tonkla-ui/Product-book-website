@@ -19,17 +19,30 @@ const productGrid = $('productGrid'), productCount = $('productCount');
 const emptyState = $('emptyState'), noResults = $('noResults'), noResultsQuery = $('noResultsQuery');
 const modalOverlay = $('modalOverlay'), modalConfirm = $('modalConfirm'), modalCancel = $('modalCancel');
 
+// Settings DOM Elements
+const settingsBtn = $('settingsBtn'), settingsModalOverlay = $('settingsModalOverlay'), settingsCloseBtn = $('settingsCloseBtn');
+const themeSelect = $('themeSelect'), toggleOthersEdit = $('toggleOthersEdit'), toggleOthersDelete = $('toggleOthersDelete');
+
 // State Variables
 let currentUser = null;
 let allProducts = [];
 let currentImageBase64 = '';
 let deleteId = null;
-let unsubscribeProducts = null; // สำหรับเก็บฟังก์ชันหยุดฟังข้อมูลจาก Firebase
+let unsubscribeProducts = null;
+let unsubscribeSettings = null; // สำหรับยกเลิกการฟังการตั้งค่าเมื่อ Logout
+
+// Default Configuration State
+let userSettings = {
+  theme: 'original',
+  showOthersEdit: false,
+  showOthersDelete: false
+};
+
 const IMG_MAX_W = 800; 
 const IMG_QUALITY = 0.75; 
 
 // ==========================================
-// 1. AUTHENTICATION & DATABASE SYNC
+// 1. AUTHENTICATION & SETTINGS DATABASE SYNC
 // ==========================================
 const provider = new GoogleAuthProvider();
 
@@ -50,75 +63,130 @@ logoutBtn.addEventListener('click', () => signOut(auth));
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    // ---- ล็อกอินสำเร็จ ----
     currentUser = user;
     loginBtn.style.display = 'none';
     userInfo.style.display = 'flex';
     userAvatar.src = user.photoURL;
-    userName.textContent = user.displayName.split(' ')[0]; // แสดงเฉพาะชื่อแรก
-    authOverlay.style.display = 'none'; // ปลดล็อกฟอร์ม
+    userName.textContent = user.displayName.split(' ')[0];
+    authOverlay.style.display = 'none';
 
-    // เริ่มดึงข้อมูลแบบ Real-time ทันทีหลังจากล็อกอินผ่านแล้ว
+    // ดึงและตรวจจับการตั้งค่าเฉพาะของบัญชีที่ Login เข้ามาแบบ Real-time
+    const settingsRef = ref(db, `users/${user.uid}/settings`);
+    unsubscribeSettings = onValue(settingsRef, (snapshot) => {
+      const val = snapshot.val();
+      if (val) {
+        userSettings = { ...userSettings, ...val };
+      } else {
+        userSettings = { theme: 'original', showOthersEdit: false, showOthersDelete: false };
+      }
+      applyUserSettings();
+    });
+
     startDatabaseListener();
   } else {
-    // ---- ออกจากระบบ / ยังไม่ได้ล็อกอิน ----
     currentUser = null;
     loginBtn.innerHTML = '<i class="ph-fill ph-google-logo"></i> Sign in';
     loginBtn.style.display = 'flex';
     loginBtn.disabled = false;
     userInfo.style.display = 'none';
-    authOverlay.style.display = 'flex'; // ล็อกฟอร์มกลับตามเดิม
+    authOverlay.style.display = 'flex';
+    
+    // รีเซ็ตการแสดงผลสไตล์กลับสู่ธีมมาตรฐานทันเมื่อออกจากระบบ
+    userSettings = { theme: 'original', showOthersEdit: false, showOthersDelete: false };
+    document.body.className = 'theme-original';
+    settingsModalOverlay.classList.remove('active');
+
+    if (unsubscribeSettings) {
+      unsubscribeSettings();
+      unsubscribeSettings = null;
+    }
     
     resetForm();
-    stopDatabaseListener(); // หยุดฟังข้อมูลและล้างหน้ารายการสินค้าทันที
+    stopDatabaseListener();
   }
 });
 
-// ฟังก์ชันเริ่มดึงและตรวจจับการเปลี่ยนแปลงของข้อมูล
+// ฟังก์ชันนำข้อมูลการตั้งค่าจาก Firebase มาแสดงผลบนหน้าเว็บ
+function applyUserSettings() {
+  document.body.className = `theme-${userSettings.theme || 'original'}`;
+  themeSelect.value = userSettings.theme || 'original';
+  toggleOthersEdit.checked = !!userSettings.showOthersEdit;
+  toggleOthersDelete.checked = !!userSettings.showOthersDelete;
+  
+  renderGrid(); // สั่งเรนเดอร์การ์ดใหม่เพื่ออัปเดตสิทธิ์การแสดงปุ่มซ่อน/แสดง
+}
+
+// บันทึกการตั้งค่าลง Firebase อัตโนมัติเมื่อมีการเปลี่ยนแปลงค่า
+function saveSettingsToFirebase() {
+  if (currentUser) {
+    set(ref(db, `users/${currentUser.uid}/settings`), userSettings);
+  }
+}
+
+// ผูกอีเวนต์เปลี่ยนค่าของหน้าต่าง Settings
+themeSelect.addEventListener('change', (e) => {
+  userSettings.theme = e.target.value;
+  document.body.className = `theme-${userSettings.theme}`;
+  saveSettingsToFirebase();
+});
+
+toggleOthersEdit.addEventListener('change', (e) => {
+  userSettings.showOthersEdit = e.target.checked;
+  saveSettingsToFirebase();
+});
+
+toggleOthersDelete.addEventListener('change', (e) => {
+  userSettings.showOthersDelete = e.target.checked;
+  saveSettingsToFirebase();
+});
+
+// เปิด/ปิด หน้าต่างการตั้งค่าลอยตัว (Settings Popup Modal)
+settingsBtn.addEventListener('click', () => settingsModalOverlay.classList.add('active'));
+settingsCloseBtn.addEventListener('click', () => settingsModalOverlay.classList.remove('active'));
+settingsModalOverlay.addEventListener('click', (e) => {
+  if (e.target === settingsModalOverlay) settingsModalOverlay.classList.remove('active');
+});
+
+// ==========================================
+// 2. REALTIME DATABASE SYNC (PRODUCTS)
+// ==========================================
 function startDatabaseListener() {
   const productsRef = ref(db, 'products');
-  
-  // สั่งให้ onValue คอยทำงานและเก็บฟังก์ชันยกเลิกไว้ในตัวแปร
   unsubscribeProducts = onValue(productsRef, (snapshot) => {
     const data = snapshot.val();
     allProducts = [];
-    
     if (data) {
       Object.keys(data).forEach(key => {
         allProducts.push({ id: key, ...data[key] });
       });
       allProducts.sort((a, b) => b.timestamp - a.timestamp);
     }
-    
-    renderGrid(); // อัปเดตรายการสินค้าบนหน้าจอทันทีที่มีการเปลี่ยนแปลง
+    renderGrid();
   }, (error) => {
     console.error("Database Read Error:", error);
   });
 }
 
-// ฟังก์ชันสำหรับสั่งให้หยุดดึงข้อมูลและเคลียร์ข้อมูลหน้าเว็บ
 function stopDatabaseListener() {
   if (unsubscribeProducts) {
-    unsubscribeProducts(); // ยกเลิกการเชื่อมต่อติดตามข้อมูลของ Firebase
+    unsubscribeProducts();
     unsubscribeProducts = null;
   }
-  allProducts = []; // ล้างอาเรย์ข้อมูลในเครื่อง
-  renderGrid();     // อัปเดตหน้าจอ (จะกลับไปเป็นหน้าจอว่างเปล่า)
+  allProducts = [];
+  renderGrid();
 }
 
 // ==========================================
-// 3. RENDER UI
+// 3. RENDER UI GRAPHICS
 // ==========================================
 function renderGrid(searchQuery = '') {
   productGrid.innerHTML = '';
   const query = searchQuery.toLowerCase().trim();
   
-  // กรองสินค้าตามการค้นหา
   const filtered = allProducts.filter(p => 
     p.name.toLowerCase().includes(query) || p.price.toString().includes(query)
   );
 
-  // อัปเดตตัวนับจำนวนสินค้า
   productCount.textContent = `${allProducts.length} products`;
   
   if (allProducts.length === 0) {
@@ -137,19 +205,26 @@ function renderGrid(searchQuery = '') {
   emptyState.style.display = 'none';
   noResults.style.display = 'none';
 
-  // แสดงการ์ดสินค้า
   filtered.forEach(product => {
     const card = document.createElement('div');
     card.className = 'product-card';
     
-    // ตรวจสอบว่าเป็นสินค้าที่ล็อกอินปัจจุบันเป็นคนเพิ่มหรือไม่ (แสดงปุ่มแก้ไข/ลบ เฉพาะของตนเอง)
+    // เงื่อนไขตรวจสอบความเป็นเจ้าของ และ อิงสิทธิ์ตามการตั้งค่าความต้องการของ Toggle switches
     const isOwner = currentUser && currentUser.uid === product.uid;
-    const actionButtons = isOwner ? `
-      <div class="card-actions">
-        <button class="btn-card btn-edit" onclick="editProduct('${product.id}')" title="Edit"><i class="ph ph-pencil-simple"></i></button>
-        <button class="btn-card btn-delete" onclick="requestDelete('${product.id}')" title="Delete"><i class="ph ph-trash"></i></button>
-      </div>
-    ` : '';
+    const canShowEdit = isOwner || userSettings.showOthersEdit;
+    const canShowDelete = isOwner || userSettings.showOthersDelete;
+
+    let actionButtons = '';
+    if (canShowEdit || canShowDelete) {
+      actionButtons = `<div class="card-actions">`;
+      if (canShowEdit) {
+        actionButtons += `<button class="btn-card btn-edit" onclick="editProduct('${product.id}')" title="Edit"><i class="ph ph-pencil-simple"></i></button>`;
+      }
+      if (canShowDelete) {
+        actionButtons += `<button class="btn-card btn-delete" onclick="requestDelete('${product.id}')" title="Delete"><i class="ph ph-trash"></i></button>`;
+      }
+      actionButtons += `</div>`;
+    }
 
     const imageHtml = product.image 
       ? `<img src="${product.image}" class="card-img" alt="${product.name}" loading="lazy" />`
@@ -189,11 +264,9 @@ imageInput.addEventListener('change', e => {
       const canvas = document.createElement('canvas');
       let w = img.width, h = img.height;
       if (w > IMG_MAX_W) { h = Math.round((h * IMG_MAX_W) / w); w = IMG_MAX_W; }
-      
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
-      
       currentImageBase64 = canvas.toDataURL('image/jpeg', IMG_QUALITY);
       showPreview(currentImageBase64);
     };
@@ -235,7 +308,6 @@ saveBtn.addEventListener('click', () => {
 
   if (!name || !price) return alert('Please fill in both name and price.');
 
-  // 1. เตรียมข้อมูลพื้นฐาน (เอา timestamp ออกมาก่อน เพื่อไม่ให้เกิดค่า undefined)
   const productData = {
     name: name,
     price: parseFloat(price),
@@ -248,32 +320,15 @@ saveBtn.addEventListener('click', () => {
   saveBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
 
   if (id) {
-    // ---- กรณีแก้ไข (UPDATE) ----
-    // ส่งข้อมูลไปอัปเดตโดยไม่แตะต้อง timestamp เดิม
     update(ref(db, `products/${id}`), productData)
-      .then(() => {
-        resetForm();
-      })
-      .catch((error) => {
-        console.error("Update Error:", error);
-        alert("เกิดข้อผิดพลาดในการแก้ไข: " + error.message);
-        resetForm(); // คืนค่าปุ่มให้กดใหม่ได้
-      });
+      .then(() => resetForm())
+      .catch((error) => { console.error(error); resetForm(); });
   } else {
-    // ---- กรณีสร้างใหม่ (CREATE) ----
-    // เพิ่ม timestamp สำหรับสินค้าใหม่
     productData.timestamp = Date.now();
-    
     const newDocRef = push(ref(db, 'products'));
     set(newDocRef, productData)
-      .then(() => {
-        resetForm();
-      })
-      .catch((error) => {
-        console.error("Save Error:", error);
-        alert("เกิดข้อผิดพลาดในการบันทึก: " + error.message);
-        resetForm(); // คืนค่าปุ่มให้กดใหม่ได้
-      });
+      .then(() => resetForm())
+      .catch((error) => { console.error(error); resetForm(); });
   }
 });
 
@@ -305,7 +360,6 @@ function resetForm() {
   currentImageBase64 = '';
   imageInput.value = '';
   hidePreview();
-  
   formTitle.innerHTML = '<i class="ph ph-plus-circle"></i> Add New Product';
   saveBtnText.textContent = 'Save Product';
   cancelEditBtn.style.display = 'none';
@@ -313,8 +367,10 @@ function resetForm() {
   saveBtn.innerHTML = '<i class="ph ph-check-circle"></i> <span id="saveBtnText">Save Product</span>';
 }
 
-// Delete Logic
 window.requestDelete = (id) => {
+  const product = allProducts.find(p => p.id === id);
+  if (!product) return;
+  if (product.uid !== currentUser.uid) return alert('You can only delete your own products.');
   deleteId = id;
   modalOverlay.classList.add('active');
 };
@@ -328,6 +384,7 @@ modalConfirm.addEventListener('click', () => {
   if (deleteId) {
     remove(ref(db, `products/${deleteId}`)).then(() => {
       deleteId = null;
+      modalOverlay.classList.remove('remove(ref(db...');
       modalOverlay.classList.remove('active');
     });
   }
