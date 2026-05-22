@@ -29,7 +29,7 @@ let allProducts = [];
 let currentImageBase64 = '';
 let deleteId = null;
 let unsubscribeProducts = null;
-let unsubscribeSettings = null; // สำหรับยกเลิกการฟังการตั้งค่าเมื่อ Logout
+let unsubscribeSettings = null; 
 
 // Default Configuration State
 let userSettings = {
@@ -70,7 +70,7 @@ onAuthStateChanged(auth, (user) => {
     userName.textContent = user.displayName.split(' ')[0];
     authOverlay.style.display = 'none';
 
-    // ดึงและตรวจจับการตั้งค่าเฉพาะของบัญชีที่ Login เข้ามาแบบ Real-time
+    // ดึงการตั้งค่า
     const settingsRef = ref(db, `users/${user.uid}/settings`);
     unsubscribeSettings = onValue(settingsRef, (snapshot) => {
       const val = snapshot.val();
@@ -91,7 +91,6 @@ onAuthStateChanged(auth, (user) => {
     userInfo.style.display = 'none';
     authOverlay.style.display = 'flex';
     
-    // รีเซ็ตการแสดงผลสไตล์กลับสู่ธีมมาตรฐานทันเมื่อออกจากระบบ
     userSettings = { theme: 'original', showOthersEdit: false, showOthersDelete: false };
     document.body.className = 'theme-original';
     settingsModalOverlay.classList.remove('active');
@@ -106,24 +105,21 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// ฟังก์ชันนำข้อมูลการตั้งค่าจาก Firebase มาแสดงผลบนหน้าเว็บ
 function applyUserSettings() {
   document.body.className = `theme-${userSettings.theme || 'original'}`;
   themeSelect.value = userSettings.theme || 'original';
   toggleOthersEdit.checked = !!userSettings.showOthersEdit;
   toggleOthersDelete.checked = !!userSettings.showOthersDelete;
   
-  renderGrid(); // สั่งเรนเดอร์การ์ดใหม่เพื่ออัปเดตสิทธิ์การแสดงปุ่มซ่อน/แสดง
+  renderGrid(); 
 }
 
-// บันทึกการตั้งค่าลง Firebase อัตโนมัติเมื่อมีการเปลี่ยนแปลงค่า
 function saveSettingsToFirebase() {
   if (currentUser) {
     set(ref(db, `users/${currentUser.uid}/settings`), userSettings);
   }
 }
 
-// ผูกอีเวนต์เปลี่ยนค่าของหน้าต่าง Settings
 themeSelect.addEventListener('change', (e) => {
   userSettings.theme = e.target.value;
   document.body.className = `theme-${userSettings.theme}`;
@@ -140,7 +136,6 @@ toggleOthersDelete.addEventListener('change', (e) => {
   saveSettingsToFirebase();
 });
 
-// เปิด/ปิด หน้าต่างการตั้งค่าลอยตัว (Settings Popup Modal)
 settingsBtn.addEventListener('click', () => settingsModalOverlay.classList.add('active'));
 settingsCloseBtn.addEventListener('click', () => settingsModalOverlay.classList.remove('active'));
 settingsModalOverlay.addEventListener('click', (e) => {
@@ -209,7 +204,6 @@ function renderGrid(searchQuery = '') {
     const card = document.createElement('div');
     card.className = 'product-card';
     
-    // เงื่อนไขตรวจสอบความเป็นเจ้าของ และ อิงสิทธิ์ตามการตั้งค่าความต้องการของ Toggle switches
     const isOwner = currentUser && currentUser.uid === product.uid;
     const canShowEdit = isOwner || userSettings.showOthersEdit;
     const canShowDelete = isOwner || userSettings.showOthersDelete;
@@ -322,20 +316,24 @@ saveBtn.addEventListener('click', () => {
   if (id) {
     update(ref(db, `products/${id}`), productData)
       .then(() => resetForm())
-      .catch((error) => { console.error(error); resetForm(); });
+      .catch((error) => { console.error(error); alert("Update Error: " + error.message); resetForm(); });
   } else {
     productData.timestamp = Date.now();
     const newDocRef = push(ref(db, 'products'));
     set(newDocRef, productData)
       .then(() => resetForm())
-      .catch((error) => { console.error(error); resetForm(); });
+      .catch((error) => { console.error(error); alert("Save Error: " + error.message); resetForm(); });
   }
 });
 
 window.editProduct = (id) => {
   const product = allProducts.find(p => p.id === id);
   if (!product) return;
-  if (product.uid !== currentUser.uid) return alert('You can only edit your own products.');
+  
+  // เช็คสิทธิ์: ถ้าไม่ใช่เจ้าของ และ ไม่ได้เปิดการตั้งค่าให้แก้ของคนอื่นได้ -> บล็อค
+  if (product.uid !== currentUser.uid && !userSettings.showOthersEdit) {
+    return alert('You can only edit your own products.');
+  }
 
   editIdInput.value = id;
   productNameInput.value = product.name;
@@ -370,7 +368,12 @@ function resetForm() {
 window.requestDelete = (id) => {
   const product = allProducts.find(p => p.id === id);
   if (!product) return;
-  if (product.uid !== currentUser.uid) return alert('You can only delete your own products.');
+  
+  // เช็คสิทธิ์: ถ้าไม่ใช่เจ้าของ และ ไม่ได้เปิดการตั้งค่าให้ลบของคนอื่นได้ -> บล็อค
+  if (product.uid !== currentUser.uid && !userSettings.showOthersDelete) {
+    return alert('You can only delete your own products.');
+  }
+  
   deleteId = id;
   modalOverlay.classList.add('active');
 };
@@ -384,7 +387,11 @@ modalConfirm.addEventListener('click', () => {
   if (deleteId) {
     remove(ref(db, `products/${deleteId}`)).then(() => {
       deleteId = null;
-      modalOverlay.classList.remove('remove(ref(db...');
+      modalOverlay.classList.remove('active');
+    }).catch(error => {
+      console.error("Delete Error:", error);
+      alert("Delete Error: " + error.message);
+      deleteId = null;
       modalOverlay.classList.remove('active');
     });
   }
