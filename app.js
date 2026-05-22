@@ -235,29 +235,45 @@ saveBtn.addEventListener('click', () => {
 
   if (!name || !price) return alert('Please fill in both name and price.');
 
+  // 1. เตรียมข้อมูลพื้นฐาน (เอา timestamp ออกมาก่อน เพื่อไม่ให้เกิดค่า undefined)
   const productData = {
     name: name,
     price: parseFloat(price),
     image: currentImageBase64,
     addedBy: currentUser.displayName,
-    uid: currentUser.uid,
-    timestamp: id ? undefined : Date.now()
+    uid: currentUser.uid
   };
 
   saveBtn.disabled = true;
   saveBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Saving...';
 
   if (id) {
-    // UPDATE
-    update(ref(db, `products/${id}`), productData).then(() => {
-      resetForm();
-    });
+    // ---- กรณีแก้ไข (UPDATE) ----
+    // ส่งข้อมูลไปอัปเดตโดยไม่แตะต้อง timestamp เดิม
+    update(ref(db, `products/${id}`), productData)
+      .then(() => {
+        resetForm();
+      })
+      .catch((error) => {
+        console.error("Update Error:", error);
+        alert("เกิดข้อผิดพลาดในการแก้ไข: " + error.message);
+        resetForm(); // คืนค่าปุ่มให้กดใหม่ได้
+      });
   } else {
-    // CREATE
+    // ---- กรณีสร้างใหม่ (CREATE) ----
+    // เพิ่ม timestamp สำหรับสินค้าใหม่
+    productData.timestamp = Date.now();
+    
     const newDocRef = push(ref(db, 'products'));
-    set(newDocRef, productData).then(() => {
-      resetForm();
-    });
+    set(newDocRef, productData)
+      .then(() => {
+        resetForm();
+      })
+      .catch((error) => {
+        console.error("Save Error:", error);
+        alert("เกิดข้อผิดพลาดในการบันทึก: " + error.message);
+        resetForm(); // คืนค่าปุ่มให้กดใหม่ได้
+      });
   }
 });
 
