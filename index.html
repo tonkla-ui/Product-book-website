@@ -30,7 +30,7 @@
           <i class="ph-fill ph-google-logo"></i> Sign in
         </button>
         
-        <div id="userInfo" class="user-info" style="display: none;">
+        <div id="userInfo" class="user-info hidden">
           <img id="userAvatar" src="" alt="Avatar" class="user-avatar" />
           <span id="userName" class="user-name"></span>
           <button id="settingsBtn" class="btn-settings" title="Settings"><i class="ph ph-gear"></i></button>
@@ -62,7 +62,7 @@
 
       <div class="section-header">
         <h2 id="formTitle"><i class="ph ph-plus-circle"></i> Add New Product</h2>
-        <button class="btn-ghost" id="cancelEdit" style="display:none">
+        <button class="btn-ghost hidden" id="cancelEdit">
           <i class="ph ph-arrow-counter-clockwise"></i> Cancel Edit
         </button>
       </div>
@@ -77,8 +77,8 @@
             <span>Click to upload image</span>
             <small>JPG, PNG, WEBP · Auto Compressed</small>
           </div>
-          <img id="imagePreview" class="image-preview" src="" alt="Preview" style="display:none" />
-          <button class="remove-image-btn" id="removeImage" style="display:none" title="Remove image">
+          <img id="imagePreview" class="image-preview hidden" src="" alt="Preview" />
+          <button class="remove-image-btn hidden" id="removeImage" title="Remove image">
             <i class="ph ph-trash"></i>
           </button>
         </div>
@@ -103,7 +103,6 @@
     <section class="list-section">
       <div class="section-header">
         <h2><i class="ph ph-package"></i> Products</h2>
-        <span id="filterCount" class="filter-count" style="display:none"></span>
       </div>
 
       <div id="emptyState" class="empty-state">
@@ -112,7 +111,7 @@
         <p>Add your first product to get started.</p>
       </div>
 
-      <div id="noResults" class="empty-state" style="display:none">
+      <div id="noResults" class="empty-state hidden">
         <div class="empty-icon"><i class="ph ph-magnifying-glass"></i></div>
         <h3>No results found</h3>
         <p>No products match '<span id="noResultsQuery"></span>'</p>
@@ -123,7 +122,7 @@
     </section>
   </main>
 
-  <div class="modal-overlay" id="modalOverlay">
+  <div class="modal-overlay hidden" id="modalOverlay">
     <div class="modal">
       <div class="modal-icon"><i class="ph ph-warning-circle"></i></div>
       <h3>Delete Product?</h3>
@@ -135,7 +134,7 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="settingsModalOverlay">
+  <div class="modal-overlay hidden" id="settingsModalOverlay">
     <div class="modal settings-modal">
       <div class="settings-header">
         <h3><i class="ph ph-gear"></i> Settings</h3>
@@ -144,15 +143,20 @@
       
       <div class="settings-body">
         <div class="settings-group">
-          <label for="themeSelect">Website Theme</label>
-          <select id="themeSelect" class="settings-select">
-            <option value="original">Vault Original (Dark Navy & Gold)</option>
-            <option value="midnight">Midnight Charcoal (OLED Black & Emerald)</option>
-            <option value="cyberpunk">Cyberpunk Neon (Purple & Cyan-Pink)</option>
-            <option value="frost">Nordic Frost (Clean White & Slate Cool)</option>
-            <option value="warm">Warm Cream (Vanilla & Sepia Wood)</option>
-            <option value="green34">Green34 (Fresh Green & Pastel)</option>
-          </select>
+          <label>Website Theme</label>
+          <div class="custom-select-container">
+            <div class="custom-select-trigger" id="themeTrigger">
+              <span id="themeLabel">Vault Original</span>
+              <i class="ph ph-caret-down"></i>
+            </div>
+            <div class="custom-select-dropdown" id="themeDropdown">
+              <div class="custom-option active" data-value="original">Vault Original (Dark Navy)</div>
+              <div class="custom-option" data-value="midnight">Midnight Charcoal (OLED)</div>
+              <div class="custom-option" data-value="cyberpunk">Cyberpunk Neon (Purple)</div>
+              <div class="custom-option" data-value="frost">Nordic Frost (Light Mode)</div>
+              <div class="custom-option" data-value="warm">Warm Cream (Light Mode)</div>
+            </div>
+          </div>
         </div>
 
         <div class="settings-group">
