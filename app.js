@@ -68,7 +68,6 @@ onAuthStateChanged(auth, (user) => {
     userInfo.style.display = 'flex';
     userAvatar.src = user.photoURL;
     userName.textContent = user.displayName.split(' ')[0];
-    authOverlay.style.display = 'none';
 
     // ดึงการตั้งค่า
     const settingsRef = ref(db, `users/${user.uid}/settings`);
@@ -330,7 +329,7 @@ window.editProduct = (id) => {
   const product = allProducts.find(p => p.id === id);
   if (!product) return;
   
-  // เช็คสิทธิ์: ถ้าไม่ใช่เจ้าของ และ ไม่ได้เปิดการตั้งค่าให้แก้ของคนอื่นได้ -> บล็อค
+  // เช็คสิทธิ์สากลและระบบ Settings
   if (product.uid !== currentUser.uid && !userSettings.showOthersEdit) {
     return alert('You can only edit your own products.');
   }
@@ -369,7 +368,7 @@ window.requestDelete = (id) => {
   const product = allProducts.find(p => p.id === id);
   if (!product) return;
   
-  // เช็คสิทธิ์: ถ้าไม่ใช่เจ้าของ และ ไม่ได้เปิดการตั้งค่าให้ลบของคนอื่นได้ -> บล็อค
+  // เช็คสิทธิ์สากลและระบบ Settings
   if (product.uid !== currentUser.uid && !userSettings.showOthersDelete) {
     return alert('You can only delete your own products.');
   }
