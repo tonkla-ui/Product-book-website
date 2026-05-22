@@ -21,7 +21,11 @@ const modalOverlay = $('modalOverlay'), modalConfirm = $('modalConfirm'), modalC
 
 // Settings DOM Elements
 const settingsBtn = $('settingsBtn'), settingsModalOverlay = $('settingsModalOverlay'), settingsCloseBtn = $('settingsCloseBtn');
-const themeSelect = $('themeSelect'), toggleOthersEdit = $('toggleOthersEdit'), toggleOthersDelete = $('toggleOthersDelete');
+const toggleOthersEdit = $('toggleOthersEdit'), toggleOthersDelete = $('toggleOthersDelete');
+
+// Custom Select UI Elements
+const themeTrigger = $('themeTrigger'), themeDropdown = $('themeDropdown'), themeLabel = $('themeLabel');
+const customOptions = document.querySelectorAll('.custom-option');
 
 // State Variables
 let currentUser = null;
@@ -29,9 +33,8 @@ let allProducts = [];
 let currentImageBase64 = '';
 let deleteId = null;
 let unsubscribeProducts = null;
-let unsubscribeSettings = null; 
+let unsubscribeSettings = null;
 
-// Default Configuration State
 let userSettings = {
   theme: 'original',
   showOthersEdit: false,
@@ -42,7 +45,7 @@ const IMG_MAX_W = 800;
 const IMG_QUALITY = 0.75; 
 
 // ==========================================
-// 1. AUTHENTICATION & SETTINGS DATABASE SYNC
+// 1. AUTHENTICATION & SETTINGS
 // ==========================================
 const provider = new GoogleAuthProvider();
 
@@ -64,12 +67,14 @@ logoutBtn.addEventListener('click', () => signOut(auth));
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
-    loginBtn.style.display = 'none';
-    userInfo.style.display = 'flex';
-    userAvatar.src = user.photoURL;
-    userName.textContent = user.displayName.split(' ')[0];
+    loginBtn.classList.add('hidden');
+    userInfo.classList.remove('hidden');
+    userAvatar.src = user.photoURL || '';
+    userName.textContent = user.displayName ? user.displayName.split(' ')[0] : 'User';
+    
+    // 🚀 FIX BUG: ลบหน้าต่างกั้นฟอร์มออกให้มั่นใจ 100% ว่าใช้งานได้
+    authOverlay.classList.add('hidden');
 
-    // ดึงการตั้งค่า
     const settingsRef = ref(db, `users/${user.uid}/settings`);
     unsubscribeSettings = onValue(settingsRef, (snapshot) => {
       const val = snapshot.val();
@@ -85,14 +90,14 @@ onAuthStateChanged(auth, (user) => {
   } else {
     currentUser = null;
     loginBtn.innerHTML = '<i class="ph-fill ph-google-logo"></i> Sign in';
-    loginBtn.style.display = 'flex';
+    loginBtn.classList.remove('hidden');
     loginBtn.disabled = false;
-    userInfo.style.display = 'none';
-    authOverlay.style.display = 'flex';
+    userInfo.classList.add('hidden');
+    authOverlay.classList.remove('hidden');
     
     userSettings = { theme: 'original', showOthersEdit: false, showOthersDelete: false };
     document.body.className = 'theme-original';
-    settingsModalOverlay.classList.remove('active');
+    settingsModalOverlay.classList.add('hidden');
 
     if (unsubscribeSettings) {
       unsubscribeSettings();
@@ -104,13 +109,47 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
+// ==========================================
+// CUSTOM UI: THEME DROPDOWN LOGIC
+// ==========================================
+themeTrigger.addEventListener('click', (e) => {
+  e.stopPropagation();
+  themeDropdown.classList.toggle('show');
+});
+
+// ซ่อนเมนูเมื่อคลิกที่อื่น
+document.addEventListener('click', () => {
+  themeDropdown.classList.remove('show');
+});
+
+customOptions.forEach(option => {
+  option.addEventListener('click', () => {
+    const val = option.getAttribute('data-value');
+    
+    // Update Setting
+    userSettings.theme = val;
+    document.body.className = `theme-${val}`;
+    saveSettingsToFirebase();
+  });
+});
+
 function applyUserSettings() {
-  document.body.className = `theme-${userSettings.theme || 'original'}`;
-  themeSelect.value = userSettings.theme || 'original';
+  const themeVal = userSettings.theme || 'original';
+  document.body.className = `theme-${themeVal}`;
+  
+  // อัปเดตหน้าตา Custom Select ให้ตรงกับค่าใน Firebase
+  customOptions.forEach(opt => {
+    if(opt.getAttribute('data-value') === themeVal) {
+      opt.classList.add('active');
+      themeLabel.textContent = opt.textContent;
+    } else {
+      opt.classList.remove('active');
+    }
+  });
+
   toggleOthersEdit.checked = !!userSettings.showOthersEdit;
   toggleOthersDelete.checked = !!userSettings.showOthersDelete;
-  
-  renderGrid(); 
+  renderGrid();
 }
 
 function saveSettingsToFirebase() {
@@ -118,12 +157,6 @@ function saveSettingsToFirebase() {
     set(ref(db, `users/${currentUser.uid}/settings`), userSettings);
   }
 }
-
-themeSelect.addEventListener('change', (e) => {
-  userSettings.theme = e.target.value;
-  document.body.className = `theme-${userSettings.theme}`;
-  saveSettingsToFirebase();
-});
 
 toggleOthersEdit.addEventListener('change', (e) => {
   userSettings.showOthersEdit = e.target.checked;
@@ -135,10 +168,11 @@ toggleOthersDelete.addEventListener('change', (e) => {
   saveSettingsToFirebase();
 });
 
-settingsBtn.addEventListener('click', () => settingsModalOverlay.classList.add('active'));
-settingsCloseBtn.addEventListener('click', () => settingsModalOverlay.classList.remove('active'));
+// Settings Modal Toggle
+settingsBtn.addEventListener('click', () => settingsModalOverlay.classList.remove('hidden'));
+settingsCloseBtn.addEventListener('click', () => settingsModalOverlay.classList.add('hidden'));
 settingsModalOverlay.addEventListener('click', (e) => {
-  if (e.target === settingsModalOverlay) settingsModalOverlay.classList.remove('active');
+  if (e.target === settingsModalOverlay) settingsModalOverlay.classList.add('hidden');
 });
 
 // ==========================================
@@ -156,8 +190,6 @@ function startDatabaseListener() {
       allProducts.sort((a, b) => b.timestamp - a.timestamp);
     }
     renderGrid();
-  }, (error) => {
-    console.error("Database Read Error:", error);
   });
 }
 
@@ -184,20 +216,20 @@ function renderGrid(searchQuery = '') {
   productCount.textContent = `${allProducts.length} products`;
   
   if (allProducts.length === 0) {
-    emptyState.style.display = 'flex';
-    noResults.style.display = 'none';
+    emptyState.classList.remove('hidden');
+    noResults.classList.add('hidden');
     return;
   }
   
   if (filtered.length === 0 && query !== '') {
-    emptyState.style.display = 'none';
-    noResults.style.display = 'flex';
+    emptyState.classList.add('hidden');
+    noResults.classList.remove('hidden');
     noResultsQuery.textContent = searchQuery;
     return;
   }
 
-  emptyState.style.display = 'none';
-  noResults.style.display = 'none';
+  emptyState.classList.add('hidden');
+  noResults.classList.add('hidden');
 
   filtered.forEach(product => {
     const card = document.createElement('div');
@@ -239,7 +271,7 @@ function renderGrid(searchQuery = '') {
 }
 
 // ==========================================
-// 4. IMAGE HANDLING (Canvas Compression)
+// 4. IMAGE HANDLING
 // ==========================================
 imageUploadArea.addEventListener('click', (e) => {
   if (e.target.closest('#removeImage') || !currentUser) return;
@@ -277,16 +309,16 @@ removeImageBtn.addEventListener('click', (e) => {
 
 function showPreview(src) {
   imagePreview.src = src;
-  imagePreview.style.display = 'block';
-  uploadPlaceholder.style.display = 'none';
-  removeImageBtn.style.display = 'flex';
+  imagePreview.classList.remove('hidden');
+  uploadPlaceholder.classList.add('hidden');
+  removeImageBtn.classList.remove('hidden');
 }
 
 function hidePreview() {
   imagePreview.src = '';
-  imagePreview.style.display = 'none';
-  uploadPlaceholder.style.display = 'flex';
-  removeImageBtn.style.display = 'none';
+  imagePreview.classList.add('hidden');
+  uploadPlaceholder.classList.remove('hidden');
+  removeImageBtn.classList.add('hidden');
 }
 
 // ==========================================
@@ -315,25 +347,21 @@ saveBtn.addEventListener('click', () => {
   if (id) {
     update(ref(db, `products/${id}`), productData)
       .then(() => resetForm())
-      .catch((error) => { console.error(error); alert("Update Error: " + error.message); resetForm(); });
+      .catch((error) => { console.error(error); alert("Error saving: " + error.message); resetForm(); });
   } else {
     productData.timestamp = Date.now();
     const newDocRef = push(ref(db, 'products'));
     set(newDocRef, productData)
       .then(() => resetForm())
-      .catch((error) => { console.error(error); alert("Save Error: " + error.message); resetForm(); });
+      .catch((error) => { console.error(error); alert("Error saving: " + error.message); resetForm(); });
   }
 });
 
 window.editProduct = (id) => {
   const product = allProducts.find(p => p.id === id);
   if (!product) return;
+  // แม้ว่าจะเปิดให้โชว์ปุ่มตาม Settings แต่ระบบจะเช็คหลังบ้านอีกรอบว่าตรงกับกฎหรือไม่
   
-  // เช็คสิทธิ์สากลและระบบ Settings
-  if (product.uid !== currentUser.uid && !userSettings.showOthersEdit) {
-    return alert('You can only edit your own products.');
-  }
-
   editIdInput.value = id;
   productNameInput.value = product.name;
   productPriceInput.value = product.price;
@@ -344,7 +372,7 @@ window.editProduct = (id) => {
 
   formTitle.innerHTML = '<i class="ph ph-pencil-simple"></i> Edit Product';
   saveBtnText.textContent = 'Update Product';
-  cancelEditBtn.style.display = 'flex';
+  cancelEditBtn.classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -359,7 +387,7 @@ function resetForm() {
   hidePreview();
   formTitle.innerHTML = '<i class="ph ph-plus-circle"></i> Add New Product';
   saveBtnText.textContent = 'Save Product';
-  cancelEditBtn.style.display = 'none';
+  cancelEditBtn.classList.add('hidden');
   saveBtn.disabled = false;
   saveBtn.innerHTML = '<i class="ph ph-check-circle"></i> <span id="saveBtnText">Save Product</span>';
 }
@@ -367,32 +395,26 @@ function resetForm() {
 window.requestDelete = (id) => {
   const product = allProducts.find(p => p.id === id);
   if (!product) return;
-  
-  // เช็คสิทธิ์สากลและระบบ Settings
-  if (product.uid !== currentUser.uid && !userSettings.showOthersDelete) {
-    return alert('You can only delete your own products.');
-  }
-  
   deleteId = id;
-  modalOverlay.classList.add('active');
+  modalOverlay.classList.remove('hidden');
 };
 
 modalCancel.addEventListener('click', () => {
   deleteId = null;
-  modalOverlay.classList.remove('active');
+  modalOverlay.classList.add('hidden');
 });
 
 modalConfirm.addEventListener('click', () => {
   if (deleteId) {
-    remove(ref(db, `products/${deleteId}`)).then(() => {
-      deleteId = null;
-      modalOverlay.classList.remove('active');
-    }).catch(error => {
-      console.error("Delete Error:", error);
-      alert("Delete Error: " + error.message);
-      deleteId = null;
-      modalOverlay.classList.remove('active');
-    });
+    remove(ref(db, `products/${deleteId}`))
+      .then(() => {
+        deleteId = null;
+        modalOverlay.classList.add('hidden');
+      })
+      .catch((error) => {
+        alert("คุณไม่มีสิทธิ์ลบสินค้านี้ เนื่องจากคุณไม่ใช่เจ้าของครับ");
+        modalOverlay.classList.add('hidden');
+      });
   }
 });
 
