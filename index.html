@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Vault — Product Manager</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -18,21 +18,27 @@
     <div class="nav-brand">
       <span class="brand-icon"><i class="ph-fill ph-vault"></i></span>
       <span class="brand-name">Vault</span>
+      <button id="addNavBtn" class="btn-nav-icon btn-add" title="Add New Product"><i class="ph ph-plus"></i></button>
     </div>
     
     <div class="nav-actions">
-      <div class="nav-meta">
-        <span id="productCount">0 products</span>
+      <div class="nav-search" id="navSearch">
+        <button id="searchToggleBtn" class="btn-nav-icon search-toggle" title="Search"><i class="ph ph-magnifying-glass"></i></button>
+        <div class="search-wrapper" id="searchWrapper">
+          <i class="ph ph-magnifying-glass search-icon"></i>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search by name or price…" autocomplete="off" />
+          <button class="search-clear" id="searchClear" title="Clear search"><i class="ph ph-x-circle"></i></button>
+        </div>
       </div>
       
       <div class="auth-container" id="authContainer">
         <button id="loginBtn" class="btn-login">
-          <i class="ph-fill ph-google-logo"></i> Sign in
+          <i class="ph-fill ph-google-logo"></i> <span class="hide-mobile">Sign in</span>
         </button>
         
-        <div id="userInfo" class="user-info hidden">
+        <div id="userInfo" class="user-info" style="display: none;">
           <img id="userAvatar" src="" alt="Avatar" class="user-avatar" />
-          <span id="userName" class="user-name"></span>
+          <span id="userName" class="user-name hide-mobile"></span>
           <button id="settingsBtn" class="btn-settings" title="Settings"><i class="ph ph-gear"></i></button>
           <button id="logoutBtn" class="btn-logout" title="Sign out"><i class="ph ph-sign-out"></i></button>
         </div>
@@ -40,31 +46,40 @@
     </div>
   </nav>
 
-  <header class="hero">
-    <div class="hero-text">
-      <h1>Your Private<br /><em>Product Vault</em></h1>
-      <p>Real-time database sync across all your devices.</p>
-    </div>
-
-    <div class="search-wrapper">
-      <i class="ph ph-magnifying-glass search-icon"></i>
-      <input type="text" id="searchInput" class="search-input" placeholder="Search by name or price…" autocomplete="off" />
-      <button class="search-clear" id="searchClear" title="Clear search"><i class="ph ph-x-circle"></i></button>
-    </div>
-  </header>
-
   <main class="main-content">
     
-    <section class="form-section" id="formSection">
+    <section class="list-section">
+      <div class="section-header">
+        <h2><i class="ph ph-package"></i> Products</h2>
+        <span id="productCount" class="product-count-badge">0 products</span>
+      </div>
+
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon"><i class="ph ph-package"></i></div>
+        <h3>Vault is empty</h3>
+        <p>Click the <strong>+</strong> button above to add your first product.</p>
+      </div>
+
+      <div id="noResults" class="empty-state" style="display:none">
+        <div class="empty-icon"><i class="ph ph-magnifying-glass"></i></div>
+        <h3>No results found</h3>
+        <p>No products match '<span id="noResultsQuery"></span>'</p>
+      </div>
+
+      <div class="product-grid" id="productGrid">
+        </div>
+    </section>
+  </main>
+
+  <div class="modal-overlay" id="formModalOverlay">
+    <div class="modal form-modal">
       <div id="authOverlay" class="auth-overlay">
         <p>Please sign in to add products</p>
       </div>
 
-      <div class="section-header">
-        <h2 id="formTitle"><i class="ph ph-plus-circle"></i> Add New Product</h2>
-        <button class="btn-ghost hidden" id="cancelEdit">
-          <i class="ph ph-arrow-counter-clockwise"></i> Cancel Edit
-        </button>
+      <div class="settings-header">
+        <h3 id="formTitle"><i class="ph ph-plus-circle"></i> Add New Product</h3>
+        <button class="btn-close-settings" id="formCloseBtn" title="Close"><i class="ph ph-x"></i></button>
       </div>
 
       <div class="product-form">
@@ -77,8 +92,8 @@
             <span>Click to upload image</span>
             <small>JPG, PNG, WEBP · Auto Compressed</small>
           </div>
-          <img id="imagePreview" class="image-preview hidden" src="" alt="Preview" />
-          <button class="remove-image-btn hidden" id="removeImage" title="Remove image">
+          <img id="imagePreview" class="image-preview" src="" alt="Preview" style="display:none" />
+          <button class="remove-image-btn" id="removeImage" style="display:none" title="Remove image">
             <i class="ph ph-trash"></i>
           </button>
         </div>
@@ -97,44 +112,27 @@
           <i class="ph ph-check-circle"></i>
           <span id="saveBtnText">Save Product</span>
         </button>
+        
+        <button class="btn-ghost btn-cancel-edit" id="cancelEdit" style="display:none">
+          <i class="ph ph-arrow-counter-clockwise"></i> Cancel Edit
+        </button>
       </div>
-    </section>
+    </div>
+  </div>
 
-    <section class="list-section">
-      <div class="section-header">
-        <h2><i class="ph ph-package"></i> Products</h2>
-      </div>
-
-      <div id="emptyState" class="empty-state">
-        <div class="empty-icon"><i class="ph ph-package"></i></div>
-        <h3>Vault is empty</h3>
-        <p>Add your first product to get started.</p>
-      </div>
-
-      <div id="noResults" class="empty-state hidden">
-        <div class="empty-icon"><i class="ph ph-magnifying-glass"></i></div>
-        <h3>No results found</h3>
-        <p>No products match '<span id="noResultsQuery"></span>'</p>
-      </div>
-
-      <div class="product-grid" id="productGrid">
-        </div>
-    </section>
-  </main>
-
-  <div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
       <div class="modal-icon"><i class="ph ph-warning-circle"></i></div>
       <h3>Delete Product?</h3>
       <p>This action cannot be undone. It will be removed from all devices.</p>
       <div class="modal-actions">
-        <button class="btn-ghost" id="modalCancel">Cancel</button>
+        <button class="btn-ghost-box" id="modalCancel">Cancel</button>
         <button class="btn-danger" id="modalConfirm">Delete</button>
       </div>
     </div>
   </div>
 
-  <div class="modal-overlay hidden" id="settingsModalOverlay">
+  <div class="modal-overlay" id="settingsModalOverlay">
     <div class="modal settings-modal">
       <div class="settings-header">
         <h3><i class="ph ph-gear"></i> Settings</h3>
@@ -143,21 +141,15 @@
       
       <div class="settings-body">
         <div class="settings-group">
-          <label>Website Theme</label>
-          <div class="custom-select-container">
-            <div class="custom-select-trigger" id="themeTrigger">
-              <span id="themeLabel">Vault Original</span>
-              <i class="ph ph-caret-down"></i>
-            </div>
-            <div class="custom-select-dropdown" id="themeDropdown">
-              <div class="custom-option active" data-value="original">Vault Original (Dark Navy & Gold)</div>
-              <div class="custom-option" data-value="midnight">Midnight Charcoal (OLED Black & Emerald)</div>
-              <div class="custom-option" data-value="cyberpunk">Cyberpunk Neon (Purple & Cyan-Pink)</div>
-              <div class="custom-option" data-value="frost">Nordic Frost (Clean White & Slate Cool)</div>
-              <div class="custom-option" data-value="warm">Warm Cream (Vanilla & Sepia Wood)</div>
-              <div class="custom-option" data-value="green34">Green34 (Fresh Green & Pastel)</div>
-            </div>
-          </div>
+          <label for="themeSelect">Website Theme</label>
+          <select id="themeSelect" class="settings-select">
+            <option value="original">Vault Original (Dark Navy & Gold)</option>
+            <option value="midnight">Midnight Charcoal (OLED Black & Emerald)</option>
+            <option value="cyberpunk">Cyberpunk Neon (Purple & Cyan-Pink)</option>
+            <option value="frost">Nordic Frost (Clean White & Slate Cool)</option>
+            <option value="warm">Warm Cream (Vanilla & Sepia Wood)</option>
+            <option value="green34">Green34 (Fresh Green & Pastel)</option>
+          </select>
         </div>
 
         <div class="settings-group">
