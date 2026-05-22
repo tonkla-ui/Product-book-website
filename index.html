@@ -5,18 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vault — Product Manager</title>
 
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body class="theme-original">
 
-  <!-- TOP NAVIGATION BAR -->
   <nav class="navbar">
     <div class="nav-brand">
       <span class="brand-icon"><i class="ph-fill ph-vault"></i></span>
@@ -28,24 +25,21 @@
         <span id="productCount">0 products</span>
       </div>
       
-      <!-- AUTHENTICATION UI -->
       <div class="auth-container" id="authContainer">
-        <!-- โชว์ตอนยังไม่ล็อกอิน -->
         <button id="loginBtn" class="btn-login">
           <i class="ph-fill ph-google-logo"></i> Sign in
         </button>
         
-        <!-- โชว์ตอนล็อกอินแล้ว -->
         <div id="userInfo" class="user-info" style="display: none;">
           <img id="userAvatar" src="" alt="Avatar" class="user-avatar" />
           <span id="userName" class="user-name"></span>
+          <button id="settingsBtn" class="btn-settings" title="Settings"><i class="ph ph-gear"></i></button>
           <button id="logoutBtn" class="btn-logout" title="Sign out"><i class="ph ph-sign-out"></i></button>
         </div>
       </div>
     </div>
   </nav>
 
-  <!-- HERO / SEARCH SECTION -->
   <header class="hero">
     <div class="hero-text">
       <h1>Your Private<br /><em>Product Vault</em></h1>
@@ -59,12 +53,9 @@
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
   <main class="main-content">
     
-    <!-- ADD / EDIT PRODUCT FORM -->
     <section class="form-section" id="formSection">
-      <!-- Overlay block the form if not logged in -->
       <div id="authOverlay" class="auth-overlay">
         <p>Please sign in to add products</p>
       </div>
@@ -109,7 +100,6 @@
       </div>
     </section>
 
-    <!-- PRODUCT LISTING -->
     <section class="list-section">
       <div class="section-header">
         <h2><i class="ph ph-package"></i> Products</h2>
@@ -129,12 +119,10 @@
       </div>
 
       <div class="product-grid" id="productGrid">
-        <!-- Products render here via JS -->
-      </div>
+        </div>
     </section>
   </main>
 
-  <!-- MODAL FOR DELETE CONFIRMATION -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
       <div class="modal-icon"><i class="ph ph-warning-circle"></i></div>
@@ -143,6 +131,49 @@
       <div class="modal-actions">
         <button class="btn-ghost" id="modalCancel">Cancel</button>
         <button class="btn-danger" id="modalConfirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="settingsModalOverlay">
+    <div class="modal settings-modal">
+      <div class="settings-header">
+        <h3><i class="ph ph-gear"></i> Settings</h3>
+        <button class="btn-close-settings" id="settingsCloseBtn" title="Close"><i class="ph ph-x"></i></button>
+      </div>
+      
+      <div class="settings-body">
+        <div class="settings-group">
+          <label for="themeSelect">Website Theme</label>
+          <select id="themeSelect" class="settings-select">
+            <option value="original">Vault Original (Dark Navy & Gold)</option>
+            <option value="midnight">Midnight Charcoal (OLED Black & Emerald)</option>
+            <option value="cyberpunk">Cyberpunk Neon (Purple & Cyan-Pink)</option>
+            <option value="frost">Nordic Frost (Clean White & Slate Cool)</option>
+            <option value="warm">Warm Cream (Vanilla & Sepia Wood)</option>
+          </select>
+        </div>
+
+        <div class="settings-group">
+          <label>Others' Products Button Controls</label>
+          <p class="settings-desc">ซ่อน/แสดง ปุ่มการจัดการสินค้าที่ถูกเพิ่มโดยบุคคลอื่น</p>
+          
+          <div class="toggle-row">
+            <span>Show Edit Button (ปุ่มแก้ไข)</span>
+            <label class="switch">
+              <input type="checkbox" id="toggleOthersEdit">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <span>Show Delete Button (ปุ่มลบ)</span>
+            <label class="switch">
+              <input type="checkbox" id="toggleOthersDelete">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
       </div>
     </div>
   </div>
