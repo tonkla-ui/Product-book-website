@@ -5,106 +5,70 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vault — Product Manager</title>
 
-  <!-- Google Fonts: DM Serif Display + Plus Jakarta Sans -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <!-- Phosphor Icons (free, no CDN key needed) -->
+  <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
-
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- ═══════════════════════════════════════════
-       TOP NAVIGATION BAR
-  ═══════════════════════════════════════════ -->
+  <!-- TOP NAVIGATION BAR -->
   <nav class="navbar">
     <div class="nav-brand">
       <span class="brand-icon"><i class="ph-fill ph-vault"></i></span>
       <span class="brand-name">Vault</span>
     </div>
-    <div class="nav-meta">
-      <span id="productCount">0 products</span>
+    
+    <div class="nav-actions">
+      <div class="nav-meta">
+        <span id="productCount">0 products</span>
+      </div>
+      
+      <!-- AUTHENTICATION UI -->
+      <div class="auth-container" id="authContainer">
+        <!-- โชว์ตอนยังไม่ล็อกอิน -->
+        <button id="loginBtn" class="btn-login">
+          <i class="ph-fill ph-google-logo"></i> Sign in
+        </button>
+        
+        <!-- โชว์ตอนล็อกอินแล้ว -->
+        <div id="userInfo" class="user-info" style="display: none;">
+          <img id="userAvatar" src="" alt="Avatar" class="user-avatar" />
+          <span id="userName" class="user-name"></span>
+          <button id="logoutBtn" class="btn-logout" title="Sign out"><i class="ph ph-sign-out"></i></button>
+        </div>
+      </div>
     </div>
   </nav>
 
-  <!-- ═══════════════════════════════════════════
-       HERO / SEARCH SECTION
-  ═══════════════════════════════════════════ -->
+  <!-- HERO / SEARCH SECTION -->
   <header class="hero">
     <div class="hero-text">
       <h1>Your Private<br /><em>Product Vault</em></h1>
-      <p>Add, organise, and search your products. Press <strong>Save</strong> to lock in any changes.</p>
+      <p>Real-time database sync across all your devices.</p>
     </div>
 
-    <!-- ONE search box — searches name AND price simultaneously -->
     <div class="search-wrapper">
       <i class="ph ph-magnifying-glass search-icon"></i>
-      <input
-        type="text"
-        id="searchInput"
-        class="search-input"
-        placeholder="Search by name or price…"
-        autocomplete="off"
-      />
-      <button class="search-clear" id="searchClear" title="Clear search">
-        <i class="ph ph-x-circle"></i>
-      </button>
+      <input type="text" id="searchInput" class="search-input" placeholder="Search by name or price…" autocomplete="off" />
+      <button class="search-clear" id="searchClear" title="Clear search"><i class="ph ph-x-circle"></i></button>
     </div>
   </header>
 
-  <!-- ═══════════════════════════════════════════
-       DATA TRANSFER BAR (Export / Import)
-  ═══════════════════════════════════════════ -->
-  <div class="transfer-bar-wrap">
-    <div class="transfer-bar">
-
-      <!-- Left label -->
-      <div class="transfer-label">
-        <i class="ph ph-arrows-left-right"></i>
-        <span>Transfer Data</span>
-        <span class="transfer-hint">ย้ายข้อมูลข้ามอุปกรณ์โดยไม่ต้องล็อกอิน</span>
-      </div>
-
-      <!-- Buttons -->
-      <div class="transfer-actions">
-
-        <!-- EXPORT button -->
-        <button class="btn-transfer btn-export" id="exportBtn" title="ดาวน์โหลดข้อมูลสินค้าทั้งหมดเป็นไฟล์ .vault">
-          <span class="btn-transfer-icon"><i class="ph ph-download-simple"></i></span>
-          <span class="btn-transfer-text">
-            <span class="btn-transfer-label">ดาวน์โหลดข้อมูลสินค้า</span>
-            <span class="btn-transfer-sub">Export · .vault file</span>
-          </span>
-        </button>
-
-        <div class="transfer-divider"></div>
-
-        <!-- IMPORT button (triggers hidden file input) -->
-        <button class="btn-transfer btn-import" id="importBtn" title="อัปโหลดไฟล์ .vault เพื่อนำข้อมูลกลับมา">
-          <span class="btn-transfer-icon"><i class="ph ph-upload-simple"></i></span>
-          <span class="btn-transfer-text">
-            <span class="btn-transfer-label">อัปโหลดข้อมูลสินค้า</span>
-            <span class="btn-transfer-sub">Import · .vault file</span>
-          </span>
-        </button>
-
-        <!-- Hidden file input for import -->
-        <input type="file" id="importFileInput" accept=".vault,.json" hidden />
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════
-       MAIN CONTENT
-  ═══════════════════════════════════════════ -->
+  <!-- MAIN CONTENT -->
   <main class="main-content">
-
-    <!-- ── ADD / EDIT PRODUCT FORM ─────────────── -->
+    
+    <!-- ADD / EDIT PRODUCT FORM -->
     <section class="form-section" id="formSection">
+      <!-- Overlay block the form if not logged in -->
+      <div id="authOverlay" class="auth-overlay">
+        <p>Please sign in to add products</p>
+      </div>
+
       <div class="section-header">
         <h2 id="formTitle"><i class="ph ph-plus-circle"></i> Add New Product</h2>
         <button class="btn-ghost" id="cancelEdit" style="display:none">
@@ -113,16 +77,14 @@
       </div>
 
       <div class="product-form">
-        <!-- Hidden field — stores ID when editing -->
         <input type="hidden" id="editId" />
 
-        <!-- Image Upload -->
         <div class="image-upload-area" id="imageUploadArea">
           <input type="file" id="imageInput" accept="image/*" hidden />
           <div class="upload-placeholder" id="uploadPlaceholder">
             <i class="ph ph-image-square"></i>
             <span>Click to upload image</span>
-            <small>JPG, PNG, WEBP · Max 5 MB</small>
+            <small>JPG, PNG, WEBP · Auto Compressed</small>
           </div>
           <img id="imagePreview" class="image-preview" src="" alt="Preview" style="display:none" />
           <button class="remove-image-btn" id="removeImage" style="display:none" title="Remove image">
@@ -130,122 +92,54 @@
           </button>
         </div>
 
-        <!-- Text Inputs -->
-        <div class="form-fields">
-          <div class="field-group">
-            <label for="productName">Product Name <span class="required">*</span></label>
-            <input
-              type="text"
-              id="productName"
-              class="field-input"
-              placeholder="e.g. Wireless Headphones"
-              maxlength="80"
-            />
-          </div>
-
-          <div class="field-group">
-            <label for="productPrice">Price <span class="required">*</span></label>
-            <div class="price-wrap">
-              <span class="currency-symbol">$</span>
-              <input
-                type="number"
-                id="productPrice"
-                class="field-input price-input"
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-              />
-            </div>
-          </div>
-
-          <!-- SAVE BUTTON — must be pressed to store -->
-          <button class="btn-save" id="saveBtn">
-            <i class="ph ph-floppy-disk"></i>
-            <span id="saveBtnText">Save Product</span>
-          </button>
+        <div class="form-group">
+          <label>Product Name</label>
+          <input type="text" id="productName" placeholder="e.g. Mechanical Keyboard" />
         </div>
-      </div>
-    </section>
 
-    <!-- ── PRODUCT GALLERY ────────────────────── -->
-    <section class="gallery-section">
-      <div class="section-header">
-        <h2><i class="ph ph-squares-four"></i> Products</h2>
-        <span class="filter-count" id="filterCount"></span>
-      </div>
+        <div class="form-group">
+          <label>Price (฿)</label>
+          <input type="number" id="productPrice" placeholder="0.00" min="0" step="0.01" />
+        </div>
 
-      <!-- Empty state (shown when no products) -->
-      <div class="empty-state" id="emptyState">
-        <i class="ph ph-package"></i>
-        <p>No products yet. Add your first one above!</p>
-      </div>
-
-      <!-- No search results state -->
-      <div class="no-results" id="noResults" style="display:none">
-        <i class="ph ph-magnifying-glass-minus"></i>
-        <p>No products match "<span id="noResultsQuery"></span>"</p>
-      </div>
-
-      <!-- Product cards grid -->
-      <div class="product-grid" id="productGrid"></div>
-    </section>
-
-  </main>
-
-  <!-- ═══════════════════════════════════════════
-       TOAST NOTIFICATION
-  ═══════════════════════════════════════════ -->
-  <div class="toast" id="toast">
-    <i class="ph ph-check-circle toast-icon"></i>
-    <span id="toastMessage">Saved!</span>
-  </div>
-
-  <!-- ═══════════════════════════════════════════
-       IMPORT CONFIRM MODAL
-  ═══════════════════════════════════════════ -->
-  <div class="modal-overlay" id="importModalOverlay">
-    <div class="modal import-modal">
-      <div class="modal-icon import-modal-icon"><i class="ph ph-upload-simple"></i></div>
-      <h3>นำเข้าข้อมูลสินค้า</h3>
-      <div class="import-file-preview" id="importFilePreview">
-        <!-- filled by JS -->
-      </div>
-      <p class="import-mode-label">เลือกวิธีนำเข้า:</p>
-      <div class="import-mode-selector">
-        <label class="import-mode-option" id="modeMergeLabel">
-          <input type="radio" name="importMode" value="merge" id="modeMerge" checked />
-          <span class="import-mode-card">
-            <i class="ph ph-git-merge"></i>
-            <strong>Merge</strong>
-            <small>รวมสินค้าใหม่เข้ากับข้อมูลที่มีอยู่</small>
-          </span>
-        </label>
-        <label class="import-mode-option" id="modeReplaceLabel">
-          <input type="radio" name="importMode" value="replace" id="modeReplace" />
-          <span class="import-mode-card">
-            <i class="ph ph-arrow-counter-clockwise"></i>
-            <strong>Replace All</strong>
-            <small>ลบข้อมูลเดิมทั้งหมด แล้วใช้ข้อมูลจากไฟล์</small>
-          </span>
-        </label>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-ghost" id="importModalCancel">ยกเลิก</button>
-        <button class="btn-import-confirm" id="importModalConfirm">
-          <i class="ph ph-check"></i> นำเข้าข้อมูล
+        <button class="btn-primary" id="saveBtn">
+          <i class="ph ph-check-circle"></i>
+          <span id="saveBtnText">Save Product</span>
         </button>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <!-- ═══════════════════════════════════════════
-       DELETE CONFIRM MODAL
-  ═══════════════════════════════════════════ -->
+    <!-- PRODUCT LISTING -->
+    <section class="list-section">
+      <div class="section-header">
+        <h2><i class="ph ph-package"></i> Products</h2>
+        <span id="filterCount" class="filter-count" style="display:none"></span>
+      </div>
+
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon"><i class="ph ph-package"></i></div>
+        <h3>Vault is empty</h3>
+        <p>Add your first product to get started.</p>
+      </div>
+
+      <div id="noResults" class="empty-state" style="display:none">
+        <div class="empty-icon"><i class="ph ph-magnifying-glass"></i></div>
+        <h3>No results found</h3>
+        <p>No products match '<span id="noResultsQuery"></span>'</p>
+      </div>
+
+      <div class="product-grid" id="productGrid">
+        <!-- Products render here via JS -->
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL FOR DELETE CONFIRMATION -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
       <div class="modal-icon"><i class="ph ph-warning-circle"></i></div>
       <h3>Delete Product?</h3>
-      <p>This action cannot be undone.</p>
+      <p>This action cannot be undone. It will be removed from all devices.</p>
       <div class="modal-actions">
         <button class="btn-ghost" id="modalCancel">Cancel</button>
         <button class="btn-danger" id="modalConfirm">Delete</button>
@@ -253,6 +147,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js" type="module"></script>
 </body>
 </html>
