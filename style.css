@@ -42,6 +42,22 @@ body.theme-warm {
   --bg-gradient: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(178, 96, 56, 0.04) 0%, transparent 100%);
 }
 
+body.theme-green34 {
+  --navy: #a8dea2;        
+  --navy-2: #f1f8e9;      
+  --navy-3: #c5e1a5;      
+  --navy-4: #9ccc65;      
+  --gold: #51af50;        
+  --gold-light: #66bb6a;
+  --gold-muted: rgba(81, 175, 80, 0.15);
+  --text-1: #1b5e20;      
+  --text-2: #2e7d32;
+  --text-3: #4caf50;
+  --border: rgba(27, 94, 32, 0.15);
+  --border-gold: rgba(81, 175, 80, 0.4);
+  --bg-gradient: none;    
+}
+
 /* ── BASE & CORE DYNAMICS ─────────────────────────────────── */
 :root {
   --red: #ef4444; --red-muted: rgba(239, 68, 68, 0.12);
@@ -61,6 +77,7 @@ h2 i { color: var(--gold); font-size: 1.1rem; }
 .navbar { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(1rem, 4vw, 2.5rem); height: 65px; background: rgba(var(--navy), 0.8); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); transition: background var(--transition); }
 body.theme-frost .navbar { background: rgba(244, 246, 249, 0.8); }
 body.theme-warm .navbar { background: rgba(252, 250, 246, 0.8); }
+body.theme-green34 .navbar { background: rgba(168, 222, 162, 0.85); }
 
 .nav-brand { display: flex; align-items: center; gap: 10px; }
 .brand-icon { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--gold), #a8722e); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #fff; }
@@ -100,6 +117,7 @@ body.theme-midnight .brand-icon { background: var(--gold); color: var(--navy); }
 .auth-overlay { position: absolute; inset: 0; background: rgba(var(--navy), 0.85); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 10; color: var(--gold); font-weight: 500; font-size: 0.95rem; text-align: center; border-radius: var(--radius); }
 body.theme-frost .auth-overlay { background: rgba(255,255,255,0.85); }
 body.theme-warm .auth-overlay { background: rgba(244, 238, 227, 0.85); }
+body.theme-green34 .auth-overlay { background: rgba(241, 248, 233, 0.85); }
 
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .btn-ghost { background: transparent; border: none; color: var(--text-3); font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: var(--transition); }
