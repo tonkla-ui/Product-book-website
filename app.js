@@ -24,56 +24,87 @@ let currentUser = null;
 let allProducts = [];
 let currentImageBase64 = '';
 let deleteId = null;
+let unsubscribeProducts = null; // สำหรับเก็บฟังก์ชันหยุดฟังข้อมูลจาก Firebase
 const IMG_MAX_W = 800; 
 const IMG_QUALITY = 0.75; 
 
 // ==========================================
-// 1. AUTHENTICATION (Google Login)
+// 1. AUTHENTICATION & DATABASE SYNC
 // ==========================================
 const provider = new GoogleAuthProvider();
 
-loginBtn.addEventListener('click', () => signInWithPopup(auth, provider));
+loginBtn.addEventListener('click', async () => {
+  try {
+    loginBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Wait...';
+    loginBtn.disabled = true;
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    console.error("Login Error:", error);
+    alert("Login failed: " + error.message);
+    loginBtn.innerHTML = '<i class="ph-fill ph-google-logo"></i> Sign in';
+    loginBtn.disabled = false;
+  }
+});
+
 logoutBtn.addEventListener('click', () => signOut(auth));
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    // Logged In
+    // ---- ล็อกอินสำเร็จ ----
     currentUser = user;
     loginBtn.style.display = 'none';
     userInfo.style.display = 'flex';
     userAvatar.src = user.photoURL;
-    userName.textContent = user.displayName.split(' ')[0]; // Show first name
-    authOverlay.style.display = 'none'; // Unlock Form
+    userName.textContent = user.displayName.split(' ')[0]; // แสดงเฉพาะชื่อแรก
+    authOverlay.style.display = 'none'; // ปลดล็อกฟอร์ม
+
+    // เริ่มดึงข้อมูลแบบ Real-time ทันทีหลังจากล็อกอินผ่านแล้ว
+    startDatabaseListener();
   } else {
-    // Logged Out
+    // ---- ออกจากระบบ / ยังไม่ได้ล็อกอิน ----
     currentUser = null;
+    loginBtn.innerHTML = '<i class="ph-fill ph-google-logo"></i> Sign in';
     loginBtn.style.display = 'flex';
+    loginBtn.disabled = false;
     userInfo.style.display = 'none';
-    authOverlay.style.display = 'flex'; // Lock Form
+    authOverlay.style.display = 'flex'; // ล็อกฟอร์มกลับตามเดิม
+    
     resetForm();
+    stopDatabaseListener(); // หยุดฟังข้อมูลและล้างหน้ารายการสินค้าทันที
   }
 });
 
-// ==========================================
-// 2. REALTIME DATABASE SYNC
-// ==========================================
-const productsRef = ref(db, 'products');
+// ฟังก์ชันเริ่มดึงและตรวจจับการเปลี่ยนแปลงของข้อมูล
+function startDatabaseListener() {
+  const productsRef = ref(db, 'products');
+  
+  // สั่งให้ onValue คอยทำงานและเก็บฟังก์ชันยกเลิกไว้ในตัวแปร
+  unsubscribeProducts = onValue(productsRef, (snapshot) => {
+    const data = snapshot.val();
+    allProducts = [];
+    
+    if (data) {
+      Object.keys(data).forEach(key => {
+        allProducts.push({ id: key, ...data[key] });
+      });
+      allProducts.sort((a, b) => b.timestamp - a.timestamp);
+    }
+    
+    renderGrid(); // อัปเดตรายการสินค้าบนหน้าจอทันทีที่มีการเปลี่ยนแปลง
+  }, (error) => {
+    console.error("Database Read Error:", error);
+  });
+}
 
-onValue(productsRef, (snapshot) => {
-  const data = snapshot.val();
-  allProducts = [];
-  
-  if (data) {
-    // Convert Firebase object to array
-    Object.keys(data).forEach(key => {
-      allProducts.push({ id: key, ...data[key] });
-    });
-    // Sort by timestamp (newest first)
-    allProducts.sort((a, b) => b.timestamp - a.timestamp);
+// ฟังก์ชันสำหรับสั่งให้หยุดดึงข้อมูลและเคลียร์ข้อมูลหน้าเว็บ
+function stopDatabaseListener() {
+  if (unsubscribeProducts) {
+    unsubscribeProducts(); // ยกเลิกการเชื่อมต่อติดตามข้อมูลของ Firebase
+    unsubscribeProducts = null;
   }
-  
-  renderGrid();
-});
+  allProducts = []; // ล้างอาเรย์ข้อมูลในเครื่อง
+  renderGrid();     // อัปเดตหน้าจอ (จะกลับไปเป็นหน้าจอว่างเปล่า)
+}
 
 // ==========================================
 // 3. RENDER UI
@@ -82,12 +113,12 @@ function renderGrid(searchQuery = '') {
   productGrid.innerHTML = '';
   const query = searchQuery.toLowerCase().trim();
   
-  // Filter products based on search
+  // กรองสินค้าตามการค้นหา
   const filtered = allProducts.filter(p => 
     p.name.toLowerCase().includes(query) || p.price.toString().includes(query)
   );
 
-  // Update counters and empty states
+  // อัปเดตตัวนับจำนวนสินค้า
   productCount.textContent = `${allProducts.length} products`;
   
   if (allProducts.length === 0) {
@@ -106,12 +137,12 @@ function renderGrid(searchQuery = '') {
   emptyState.style.display = 'none';
   noResults.style.display = 'none';
 
-  // Render cards
+  // แสดงการ์ดสินค้า
   filtered.forEach(product => {
     const card = document.createElement('div');
     card.className = 'product-card';
     
-    // Check if the current logged in user is the owner (can edit/delete)
+    // ตรวจสอบว่าเป็นสินค้าที่ล็อกอินปัจจุบันเป็นคนเพิ่มหรือไม่ (แสดงปุ่มแก้ไข/ลบ เฉพาะของตนเอง)
     const isOwner = currentUser && currentUser.uid === product.uid;
     const actionButtons = isOwner ? `
       <div class="card-actions">
@@ -163,7 +194,6 @@ imageInput.addEventListener('change', e => {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
       
-      // Compress and store in memory
       currentImageBase64 = canvas.toDataURL('image/jpeg', IMG_QUALITY);
       showPreview(currentImageBase64);
     };
@@ -211,7 +241,7 @@ saveBtn.addEventListener('click', () => {
     image: currentImageBase64,
     addedBy: currentUser.displayName,
     uid: currentUser.uid,
-    timestamp: id ? undefined : Date.now() // Only set timestamp on creation
+    timestamp: id ? undefined : Date.now()
   };
 
   saveBtn.disabled = true;
@@ -224,7 +254,7 @@ saveBtn.addEventListener('click', () => {
     });
   } else {
     // CREATE
-    const newDocRef = push(productsRef);
+    const newDocRef = push(ref(db, 'products'));
     set(newDocRef, productData).then(() => {
       resetForm();
     });
